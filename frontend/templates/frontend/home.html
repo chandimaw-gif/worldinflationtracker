@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}Sri Lanka Inflation Rate — {{ current_month_year|default:"2026" }} | World Inflation Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="hero">
+        <h1>🌍 World Inflation Tracker</h1>
+        <p class="subtitle">Tracking inflation across the world with real price data</p>
+        
+        <div class="country-selector">
+            <label for="country-select">Select Country:</label>
+            <select id="country-select" onchange="window.location.href='/'+this.value+'/'">
+                {% for c in countries %}
+                <option value="{{ c.code|lower }}" {% if c.code == 'LKA' %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </section>
+
+    <section class="dashboard">
+        <div class="stats-grid">
+            <div class="stat-card headline">
+                <h3>Headline CPI</h3>
+                <div class="stat-value" id="headline-cpi">—</div>
+                <div class="stat-change" id="headline-change">YoY Change</div>
+            </div>
+            <div class="stat-card core">
+                <h3>Core CPI</h3>
+                <div class="stat-value" id="core-cpi">—</div>
+                <div class="stat-change" id="core-change">YoY Change</div>
+            </div>
+            <div class="stat-card food">
+                <h3>Food CPI</h3>
+                <div class="stat-value" id="food-cpi">—</div>
+                <div class="stat-change" id="food-change">YoY Change</div>
+            </div>
+        </div>
+
+        {% if ads.mid_content_1 %}
+        <div class="ad-container ad-mid" data-slot="mid_content_1">
+            {% if ads.mid_content_1.ad_type == 'manual' %}
+                <a href="{{ ads.mid_content_1.manual_link_url }}" target="_blank" rel="noopener sponsored">
+                    <img src="{{ ads.mid_content_1.manual_image_url }}" alt="{{ ads.mid_content_1.manual_alt_text }}" loading="lazy">
+                </a>
+            {% elif ads.mid_content_1.ad_type == 'custom' %}
+                {{ ads.mid_content_1.manual_html|safe }}
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="chart-section">
+            <div class="chart-controls">
+                <select id="metric-select">
+                    <option value="headline">Headline CPI</option>
+                    <option value="core">Core CPI</option>
+                    <option value="food">Food CPI</option>
+                </select>
+                <select id="range-select">
+                    <option value="1y">Last 1 Year</option>
+                    <option value="5y">Last 5 Years</option>
+                    <option value="all">All Time</option>
+                </select>
+            </div>
+            <div class="chart-container">
+                <canvas id="main-chart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <div class="two-column">
+        <aside class="sidebar-left">
+            <div class="widget comparison-tool">
+                <h3>Comparison Tool</h3>
+                <p>Select categories or items to compare over time.</p>
+                <a href="{% url 'analysis' %}" class="btn">Go to Analysis →</a>
+            </div>
+        </aside>
+
+        <aside class="sidebar-right">
+            {% if ads.sidebar_1 %}
+            <div class="ad-container ad-sidebar" data-slot="sidebar_1">
+                {% if ads.sidebar_1.ad_type == 'manual' %}
+                    <a href="{{ ads.sidebar_1.manual_link_url }}" target="_blank" rel="noopener sponsored">
+                        <img src="{{ ads.sidebar_1.manual_image_url }}" alt="{{ ads.sidebar_1.manual_alt_text }}" loading="lazy">
+                    </a>
+                {% elif ads.sidebar_1.ad_type == 'custom' %}
+                    {{ ads.sidebar_1.manual_html|safe }}
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="widget exchange-widget">
+                <h3>Exchange Rate</h3>
+                <p class="rate">USD/LKR: <strong id="usd-lkr-rate">—</strong></p>
+                <a href="{% url 'exchange-rates' %}">View Full →</a>
+            </div>
+
+            {% if ads.sidebar_2 %}
+            <div class="ad-container ad-sidebar" data-slot="sidebar_2">
+                {% if ads.sidebar_2.ad_type == 'manual' %}
+                    <a href="{{ ads.sidebar_2.manual_link_url }}" target="_blank" rel="noopener sponsored">
+                        <img src="{{ ads.sidebar_2.manual_image_url }}" alt="{{ ads.sidebar_2.manual_alt_text }}" loading="lazy">
+                    </a>
+                {% elif ads.sidebar_2.ad_type == 'custom' %}
+                    {{ ads.sidebar_2.manual_html|safe }}
+                {% endif %}
+            </div>
+            {% endif %}
+        </aside>
+    </div>
+
+    <section class="news-feed">
+        <h2>📰 Latest Economic News</h2>
+        <div class="news-list" id="news-list">
+            <p class="loading">Loading news...</p>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ctx = document.getElementById('main-chart').getContext('2d');
+const mainChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label: 'CPI Index',
+            data: [],
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            fill: true,
+            tension: 0.3
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { display: true },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: false,
+                title: { display: true, text: 'Index Value (Base = 100)' }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

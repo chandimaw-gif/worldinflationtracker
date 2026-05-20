@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Methodology | World Inflation Tracker{% endblock %}
+
+{% block content %}
+<div class="container content-page">
+    <h1>Methodology</h1>
+    
+    <section class="methodology-section">
+        <h2>1. Inflation Methodology — Laspeyres Fixed-Basket CPI</h2>
+        <p>We calculate the CPI using the <strong>modified Laspeyres index</strong>, consistent with the methodology used by Sri Lanka's Department of Census and Statistics (CCPI base 2021=100) and the ILO/IMF Consumer Price Index Manual (2020).</p>
+        
+        <div class="formula-box">
+            <h3>CPI Formula</h3>
+            <p class="formula">CPI<sub>t</sub> = (Σ (P<sub>i,t</sub> × Q<sub>i,0</sub>)) / (Σ (P<sub>i,0</sub> × Q<sub>i,0</sub>)) × 100</p>
+            <ul>
+                <li><strong>P<sub>i,t</sub></strong> = Price of item i in period t (current)</li>
+                <li><strong>P<sub>i,0</sub></strong> = Price of item i in the base period</li>
+                <li><strong>Q<sub>i,0</sub></strong> = Quantity (fixed weight) of item i in the base period</li>
+            </ul>
+        </div>
+
+        <h3>Inflation Rate Calculations</h3>
+        <div class="formula-box">
+            <p><strong>Year-on-Year (YoY):</strong> π<sub>t</sub> = ((CPI<sub>t</sub> − CPI<sub>t−12</sub>) / CPI<sub>t−12</sub>) × 100</p>
+            <p><strong>Month-on-Month (MoM):</strong> π<sub>m</sub> = ((CPI<sub>t</sub> − CPI<sub>t−1</sub>) / CPI<sub>t−1</sub>) × 100</p>
+            <p><strong>12-Month Moving Average:</strong> π<sub>MA</sub> = ((Avg CPI last 12 mo − Avg CPI previous 12 mo) / Avg CPI previous 12 mo) × 100</p>
+        </div>
+
+        <h3>Core Inflation (Exclusion Method)</h3>
+        <p>Following the CBSL paper "Revisiting Core Inflation in Sri Lanka" (Maheepala & Pathirage, December 2024), we exclude:</p>
+        <ul>
+            <li>Volatile food items (fresh vegetables, fruits, coconut, eggs, chillies, onions)</li>
+            <li>Energy (electricity, gas, liquid fuels, solid fuels)</li>
+            <li>Transport fuels</li>
+            <li>Water supply</li>
+        </ul>
+    </section>
+
+    <section class="methodology-section">
+        <h2>2. Elementary Index Compilation</h2>
+        <p>Following DCS methodology, elementary indices use the <strong>geometric mean (Jevons formula)</strong>:</p>
+        <p class="formula">P<sub>Jevons</sub> = (Π P<sub>i</sub>)<sup>(1/n)</sup></p>
+        <p>Higher-level indices use the <strong>Laspeyres formula</strong> with expenditure weights from HIES 2019.</p>
+    </section>
+
+    <section class="methodology-section">
+        <h2>3. Data Sources</h2>
+        <ul>
+            <li><strong>Retail prices:</strong> Keells Super, Spar2U, Singer Sri Lanka, Buyabans, Dialog, SLT</li>
+            <li><strong>Fuel prices:</strong> CEYPETCO official website</li>
+            <li><strong>Exchange rates:</strong> Central Bank of Sri Lanka</li>
+            <li><strong>News:</strong> RSS feeds from EconomyNext, Daily FT, Daily Mirror, CBSL, and others</li>
+        </ul>
+    </section>
+
+    <section class="methodology-section">
+        <h2>4. Important Disclaimers</h2>
+        <div class="disclaimer-box">
+            <p><strong>Disclaimer:</strong> World Inflation Tracker is an independent research tool. The inflation rates and price indices published here are calculated independently using publicly available price data and internationally standard methodologies. They are <strong>NOT official government statistics</strong>. For official inflation figures, please refer to the <a href="http://www.statistics.gov.lk" target="_blank">Department of Census and Statistics</a> and the <a href="https://www.cbsl.gov.lk" target="_blank">Central Bank of Sri Lanka</a>.</p>
+            <p><strong>Data Attribution:</strong> Product prices are sourced from publicly accessible e-commerce websites. News content is sourced via RSS feeds and attributed to original publishers. Exchange rate data is sourced from the Central Bank of Sri Lanka.</p>
+        </div>
+    </section>
+</div>
+{% endblock %}

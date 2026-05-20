@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}World Inflation Tracker{% endblock %}</title>
+    <meta name="description" content="Independent inflation tracking across the world using real price data">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="{% url 'home' %}" class="logo">
+                <span class="logo-icon">🌍</span>
+                <span class="logo-text">World Inflation Tracker</span>
+            </a>
+            <nav class="main-nav">
+                <a href="{% url 'home' %}">Dashboard</a>
+                <a href="{% url 'analysis' %}">Analysis</a>
+                <a href="{% url 'price-log' %}">Price Log</a>
+                <a href="{% url 'exchange-rates' %}">Exchange Rates</a>
+                <a href="{% url 'methodology' %}">Methodology</a>
+                <a href="{% url 'about' %}">About</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+        </div>
+    </header>
+
+    {% if ads.header_banner %}
+    <div class="ad-container ad-header" data-slot="header_banner">
+        {% if ads.header_banner.ad_type == 'manual' %}
+            <a href="{{ ads.header_banner.manual_link_url }}" target="_blank" rel="noopener sponsored">
+                <img src="{{ ads.header_banner.manual_image_url }}" alt="{{ ads.header_banner.manual_alt_text }}" loading="lazy">
+            </a>
+        {% elif ads.header_banner.ad_type == 'custom' %}
+            {{ ads.header_banner.manual_html|safe }}
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <main class="site-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% if ads.footer_banner %}
+    <div class="ad-container ad-footer" data-slot="footer_banner">
+        {% if ads.footer_banner.ad_type == 'manual' %}
+            <a href="{{ ads.footer_banner.manual_link_url }}" target="_blank" rel="noopener sponsored">
+                <img src="{{ ads.footer_banner.manual_image_url }}" alt="{{ ads.footer_banner.manual_alt_text }}" loading="lazy">
+            </a>
+        {% elif ads.footer_banner.ad_type == 'custom' %}
+            {{ ads.footer_banner.manual_html|safe }}
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>© {% now "Y" %} World Inflation Tracker. Independent research tool.</p>
+            <p class="disclaimer">
+                <strong>Disclaimer:</strong> This is an independent research tool. The inflation rates published here are NOT official government statistics.
+                For official figures, refer to the Department of Census and Statistics and the Central Bank of Sri Lanka.
+            </p>
+        </div>
+    </footer>
+
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}About | World Inflation Tracker{% endblock %}
+
+{% block content %}
+<div class="container content-page">
+    <h1>About World Inflation Tracker</h1>
+    
+    <p>World Inflation Tracker is an independent, open-data initiative that tracks consumer prices and calculates inflation rates using internationally recognized methodologies. We started with <strong>Sri Lanka</strong> as our pilot country, with the architecture designed to expand globally.</p>
+
+    <h2>Our Mission</h2>
+    <ul>
+        <li>Provide transparent, independently calculated inflation data</li>
+        <li>Make price data accessible and verifiable</li>
+        <li>Use standardized methodologies comparable to official statistics</li>
+        <li>Maintain full audit trails for every price point</li>
+    </ul>
+
+    <h2>How It Works</h2>
+    <p>Our system scrapes prices daily and weekly from publicly listed e-commerce sites, utility providers, and government sources. These prices feed into a fixed basket of ~85 goods and services, weighted according to household expenditure patterns. The CPI is calculated monthly and rebased to January 2022 = 100.</p>
+
+    <h2>Limitations</h2>
+    <ul>
+        <li>Online prices may not always reflect open-market prices for fresh produce</li>
+        <li>Service prices (health, education, transport) often require manual surveying</li>
+        <li>Item substitutions (new models replacing old) are flagged for review</li>
+        <li>Our index is a research tool, not a replacement for official statistics</li>
+    </ul>
+
+    <div class="disclaimer-box">
+        <p><strong>Disclaimer:</strong> This tracker is intended for educational, research, and analytical purposes only.</p>
+    </div>
+</div>
+{% endblock %}

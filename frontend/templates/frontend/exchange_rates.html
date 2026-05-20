@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Exchange Rates | World Inflation Tracker{% endblock %}
+
+{% block content %}
+<div class="container content-page">
+    <h1>Exchange Rates</h1>
+    <p class="subtitle">USD/LKR and other major currency pairs.</p>
+
+    <div class="stats-grid mini">
+        <div class="stat-card">
+            <h4>Current USD/LKR</h4>
+            <div class="stat-value" id="current-rate">—</div>
+        </div>
+        <div class="stat-card">
+            <h4>52-Week High</h4>
+            <div class="stat-value" id="high-rate">—</div>
+        </div>
+        <div class="stat-card">
+            <h4>52-Week Low</h4>
+            <div class="stat-value" id="low-rate">—</div>
+        </div>
+        <div class="stat-card">
+            <h4>YoY Change</h4>
+            <div class="stat-value" id="yoy-rate">—</div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="exchange-chart"></canvas>
+    </div>
+
+    <div class="table-wrapper">
+        <h3>Recent Rates</h3>
+        <table class="data-table">
+            <thead>
+                <tr><th>Date</th><th>USD/LKR</th><th>Source</th></tr>
+            </thead>
+            <tbody>
+                {% for r in rates %}
+                <tr>
+                    <td>{{ r.rate_date }}</td>
+                    <td class="numeric">{{ r.rate|floatformat:4 }}</td>
+                    <td>{{ r.source|default:"CBSL" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="empty">No exchange rate data yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ctx = document.getElementById('exchange-chart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label: 'USD/LKR',
+            data: [],
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            fill: true,
+            tension: 0.3
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'USD/LKR Exchange Rate' } },
+        scales: { y: { title: { display: true, text: 'LKR per 1 USD' } } }
+    }
+});
+</script>
+{% endblock %}

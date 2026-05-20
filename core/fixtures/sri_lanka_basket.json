@@ -1,0 +1,892 @@
+[
+  {
+    "model": "core.country",
+    "pk": "LKA",
+    "fields": {
+      "name": "Sri Lanka",
+      "currency_code": "LKR",
+      "currency_symbol": "Rs.",
+      "base_period": "2022-01-01",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 1,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "01",
+      "name": "Food and Non-Alcoholic Beverages",
+      "parent": null,
+      "weight": "26.2300",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 2,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "02",
+      "name": "Alcoholic Beverages, Tobacco and Narcotics",
+      "parent": null,
+      "weight": "3.8500",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 3,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "03",
+      "name": "Clothing and Footwear",
+      "parent": null,
+      "weight": "3.6400",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 4,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "04",
+      "name": "Housing, Water, Electricity, Gas",
+      "parent": null,
+      "weight": "21.7800",
+      "is_core": false,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 5,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "05",
+      "name": "Furnishing, Household Equipment",
+      "parent": null,
+      "weight": "4.1200",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 6,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "06",
+      "name": "Health",
+      "parent": null,
+      "weight": "5.3300",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 7,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "07",
+      "name": "Transport",
+      "parent": null,
+      "weight": "12.4100",
+      "is_core": false,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 8,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "08",
+      "name": "Communication",
+      "parent": null,
+      "weight": "4.8800",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 9,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "09",
+      "name": "Recreation and Culture",
+      "parent": null,
+      "weight": "3.1500",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 10,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "10",
+      "name": "Education",
+      "parent": null,
+      "weight": "5.0800",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 11,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "11",
+      "name": "Restaurants and Hotels",
+      "parent": null,
+      "weight": "4.7200",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.productgroup",
+    "pk": 12,
+    "fields": {
+      "country": "LKA",
+      "coicop_code": "12",
+      "name": "Miscellaneous Goods and Services",
+      "parent": null,
+      "weight": "4.8100",
+      "is_core": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 1,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Rice — Nadu (white, raw)",
+      "unit": "1 kg (bulk/loose)",
+      "brand": "",
+      "specification": "Most consumed staple; bulk price",
+      "weight": "0.1200",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 2,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Rice — Samba",
+      "unit": "1 kg (bulk/loose)",
+      "brand": "",
+      "specification": "Second most popular variety",
+      "weight": "0.0800",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 3,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Wheat Flour — Prima brand",
+      "unit": "1 kg",
+      "brand": "Prima",
+      "specification": "Standard baking flour",
+      "weight": "0.0500",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 4,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Dhal (Mysoor/Red Lentils)",
+      "unit": "1 kg (bulk)",
+      "brand": "",
+      "specification": "Key protein source",
+      "weight": "0.0600",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 5,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Sugar — White granulated",
+      "unit": "1 kg (bulk/loose)",
+      "brand": "",
+      "specification": "Bulk price, not packeted",
+      "weight": "0.0400",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 6,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Coconut Oil",
+      "unit": "1 litre",
+      "brand": "",
+      "specification": "",
+      "weight": "0.0400",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 7,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Eggs — Fresh hen",
+      "unit": "1 egg (or 10-pack)",
+      "brand": "",
+      "specification": "Price per egg for comparability",
+      "weight": "0.0300",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 8,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Chicken — Whole dressed",
+      "unit": "1 kg",
+      "brand": "",
+      "specification": "",
+      "weight": "0.0500",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 9,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Milk Powder — Anchor/Highland full cream",
+      "unit": "400g packet",
+      "brand": "Anchor/Highland",
+      "specification": "Critical household item",
+      "weight": "0.0600",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 10,
+    "fields": {
+      "country": "LKA",
+      "group": 1,
+      "name": "Tea — Loose leaf (popular brand)",
+      "unit": "200g",
+      "brand": "",
+      "specification": "National beverage",
+      "weight": "0.0200",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 11,
+    "fields": {
+      "country": "LKA",
+      "group": 3,
+      "name": "Men's casual shirt (cotton)",
+      "unit": "1 unit",
+      "brand": "",
+      "specification": "Mid-range brand",
+      "weight": "0.0120",
+      "scrape_source_primary": "https://www.nolimit.lk/categories/Men/Casual-Wear",
+      "scrape_source_backup": "https://singersl.com",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 12,
+    "fields": {
+      "country": "LKA",
+      "group": 3,
+      "name": "Women's dress/top (cotton)",
+      "unit": "1 unit",
+      "brand": "",
+      "specification": "",
+      "weight": "0.0120",
+      "scrape_source_primary": "https://www.nolimit.lk/categories/Women",
+      "scrape_source_backup": "https://www.nolimit.lk/categories/Women/Formal-Wear",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 13,
+    "fields": {
+      "country": "LKA",
+      "group": 3,
+      "name": "Children's school uniform shirt",
+      "unit": "1 unit",
+      "brand": "",
+      "specification": "",
+      "weight": "0.0080",
+      "scrape_source_primary": "https://www.nolimit.lk/categories/Kids",
+      "scrape_source_backup": "",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 14,
+    "fields": {
+      "country": "LKA",
+      "group": 3,
+      "name": "Men's shoes (formal, mid-range)",
+      "unit": "1 pair",
+      "brand": "Bata",
+      "specification": "Formal black/brown leather",
+      "weight": "0.0100",
+      "scrape_source_primary": "https://bata.lk",
+      "scrape_source_backup": "",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 15,
+    "fields": {
+      "country": "LKA",
+      "group": 3,
+      "name": "Rubber slippers (Bata type)",
+      "unit": "1 pair",
+      "brand": "Bata",
+      "specification": "Health-K or equivalent",
+      "weight": "0.0040",
+      "scrape_source_primary": "https://bata.lk/product-category/men/mens-flip-flops/",
+      "scrape_source_backup": "",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 16,
+    "fields": {
+      "country": "LKA",
+      "group": 4,
+      "name": "Electricity tariff — Domestic (0-60 kWh block)",
+      "unit": "per kWh rate",
+      "brand": "",
+      "specification": "Administered by PUCSL",
+      "weight": "0.0500",
+      "scrape_source_primary": "https://www.ceb.lk/tariff_catergory",
+      "scrape_source_backup": "",
+      "scrape_frequency": "monthly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 17,
+    "fields": {
+      "country": "LKA",
+      "group": 4,
+      "name": "LP Gas — Litro 12.5kg cylinder",
+      "unit": "1 cylinder",
+      "brand": "Litro",
+      "specification": "Monthly price revision",
+      "weight": "0.0800",
+      "scrape_source_primary": "https://www.litrogas.com/price-list/",
+      "scrape_source_backup": "",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 18,
+    "fields": {
+      "country": "LKA",
+      "group": 4,
+      "name": "LP Gas — Laugfs 12.5kg cylinder",
+      "unit": "1 cylinder",
+      "brand": "Laugfs",
+      "specification": "Monthly price revision",
+      "weight": "0.0200",
+      "scrape_source_primary": "https://www.laugfsgas.lk/pricelist.php",
+      "scrape_source_backup": "",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 19,
+    "fields": {
+      "country": "LKA",
+      "group": 4,
+      "name": "Paint — Emulsion (Multilac/Nippon, white)",
+      "unit": "4 litre tin",
+      "brand": "Multilac/Nippon",
+      "specification": "",
+      "weight": "0.0150",
+      "scrape_source_primary": "https://singersl.com",
+      "scrape_source_backup": "https://buyabans.com",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 20,
+    "fields": {
+      "country": "LKA",
+      "group": 5,
+      "name": "Refrigerator — Inverter, 250L (Samsung/LG)",
+      "unit": "1 unit",
+      "brand": "Samsung/LG",
+      "specification": "Track exact model",
+      "weight": "0.0080",
+      "scrape_source_primary": "https://singersl.com",
+      "scrape_source_backup": "https://buyabans.com",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 21,
+    "fields": {
+      "country": "LKA",
+      "group": 5,
+      "name": "Washing Machine — 7kg Front Load (Samsung/LG)",
+      "unit": "1 unit",
+      "brand": "Samsung/LG",
+      "specification": "Track exact model",
+      "weight": "0.0080",
+      "scrape_source_primary": "https://singersl.com",
+      "scrape_source_backup": "https://buyabans.com",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 22,
+    "fields": {
+      "country": "LKA",
+      "group": 5,
+      "name": "Mattress — Double, spring (Celeste/Arpico)",
+      "unit": "1 unit",
+      "brand": "Celeste/Arpico",
+      "specification": "",
+      "weight": "0.0100",
+      "scrape_source_primary": "https://arpicofurniture.com/product-category/mattresses/",
+      "scrape_source_backup": "https://mysoftlogic.lk/furniture/dp/68",
+      "scrape_frequency": "quarterly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 23,
+    "fields": {
+      "country": "LKA",
+      "group": 5,
+      "name": "Dishwashing Liquid (Vim/Sunlight)",
+      "unit": "500ml",
+      "brand": "Vim/Sunlight",
+      "specification": "",
+      "weight": "0.0050",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 24,
+    "fields": {
+      "country": "LKA",
+      "group": 6,
+      "name": "Paracetamol 500mg (Panadol brand)",
+      "unit": "10-tablet strip",
+      "brand": "Panadol",
+      "specification": "Most common OTC drug",
+      "weight": "0.0200",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "",
+      "scrape_frequency": "monthly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 25,
+    "fields": {
+      "country": "LKA",
+      "group": 7,
+      "name": "Petrol — Octane 92",
+      "unit": "1 litre",
+      "brand": "",
+      "specification": "Revised bi-weekly/monthly",
+      "weight": "0.0400",
+      "scrape_source_primary": "https://ceypetco.gov.lk/historical-prices/",
+      "scrape_source_backup": "",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 26,
+    "fields": {
+      "country": "LKA",
+      "group": 7,
+      "name": "Petrol — Octane 95",
+      "unit": "1 litre",
+      "brand": "",
+      "specification": "",
+      "weight": "0.0200",
+      "scrape_source_primary": "https://ceypetco.gov.lk/historical-prices/",
+      "scrape_source_backup": "",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 27,
+    "fields": {
+      "country": "LKA",
+      "group": 7,
+      "name": "Auto Diesel",
+      "unit": "1 litre",
+      "brand": "",
+      "specification": "",
+      "weight": "0.0300",
+      "scrape_source_primary": "https://ceypetco.gov.lk/historical-prices/",
+      "scrape_source_backup": "",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 28,
+    "fields": {
+      "country": "LKA",
+      "group": 8,
+      "name": "Mobile voice — Dialog prepaid (per-minute rate)",
+      "unit": "Per minute",
+      "brand": "Dialog",
+      "specification": "Largest network",
+      "weight": "0.0100",
+      "scrape_source_primary": "https://dialog.lk/mobile/prepaid/plans",
+      "scrape_source_backup": "",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 29,
+    "fields": {
+      "country": "LKA",
+      "group": 8,
+      "name": "Mobile data — Dialog 1.5GB monthly add-on",
+      "unit": "1 package",
+      "brand": "Dialog",
+      "specification": "",
+      "weight": "0.0150",
+      "scrape_source_primary": "https://dialog.lk/mobile-broadband/prepaid/plan",
+      "scrape_source_backup": "",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 30,
+    "fields": {
+      "country": "LKA",
+      "group": 8,
+      "name": "Fixed broadband — SLT Fibre 30Mbps",
+      "unit": "Monthly plan",
+      "brand": "SLT",
+      "specification": "Most popular ISP",
+      "weight": "0.0200",
+      "scrape_source_primary": "https://www.slt.lk",
+      "scrape_source_backup": "",
+      "scrape_frequency": "monthly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 31,
+    "fields": {
+      "country": "LKA",
+      "group": 8,
+      "name": "Smartphone — Samsung Galaxy A-series (A15 or equivalent)",
+      "unit": "1 unit",
+      "brand": "Samsung",
+      "specification": "Track exact model yearly",
+      "weight": "0.0150",
+      "scrape_source_primary": "https://singersl.com",
+      "scrape_source_backup": "https://buyabans.com",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 32,
+    "fields": {
+      "country": "LKA",
+      "group": 9,
+      "name": "Television — 43\" Smart TV (Samsung/LG)",
+      "unit": "1 unit",
+      "brand": "Samsung/LG",
+      "specification": "Track exact model",
+      "weight": "0.0100",
+      "scrape_source_primary": "https://singersl.com",
+      "scrape_source_backup": "https://buyabans.com",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 33,
+    "fields": {
+      "country": "LKA",
+      "group": 9,
+      "name": "Laptop — Entry-level (HP/Lenovo, i3/Ryzen 3)",
+      "unit": "1 unit",
+      "brand": "HP/Lenovo",
+      "specification": "Track exact model",
+      "weight": "0.0100",
+      "scrape_source_primary": "https://singersl.com",
+      "scrape_source_backup": "https://buyabans.com",
+      "scrape_frequency": "weekly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 34,
+    "fields": {
+      "country": "LKA",
+      "group": 9,
+      "name": "Stationery — A4 paper ream (500 sheets)",
+      "unit": "1 ream",
+      "brand": "",
+      "specification": "",
+      "weight": "0.0030",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "",
+      "scrape_frequency": "monthly",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 35,
+    "fields": {
+      "country": "LKA",
+      "group": 12,
+      "name": "Soap — Lux/Lifebuoy bath soap",
+      "unit": "100g bar",
+      "brand": "Lux/Lifebuoy",
+      "specification": "",
+      "weight": "0.0100",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 36,
+    "fields": {
+      "country": "LKA",
+      "group": 12,
+      "name": "Shampoo — Sunsilk/Head & Shoulders",
+      "unit": "180ml bottle",
+      "brand": "Sunsilk/Head & Shoulders",
+      "specification": "",
+      "weight": "0.0100",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 37,
+    "fields": {
+      "country": "LKA",
+      "group": 12,
+      "name": "Toothpaste — Signal/Colgate",
+      "unit": "120g tube",
+      "brand": "Signal/Colgate",
+      "specification": "",
+      "weight": "0.0100",
+      "scrape_source_primary": "https://keellssuper.com",
+      "scrape_source_backup": "https://spar2u.lk",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "core.basketitem",
+    "pk": 38,
+    "fields": {
+      "country": "LKA",
+      "group": 12,
+      "name": "Gold — 22-carat (per gram)",
+      "unit": "1 gram",
+      "brand": "",
+      "specification": "Derived from CBSL",
+      "weight": "0.0200",
+      "scrape_source_primary": "https://www.cbsl.gov.lk/en/rates-and-indicators/exchange-rates",
+      "scrape_source_backup": "",
+      "scrape_frequency": "daily",
+      "requires_manual_entry": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  }
+]

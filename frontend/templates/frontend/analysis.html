@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Detailed Analysis | World Inflation Tracker{% endblock %}
+
+{% block content %}
+<div class="container content-page">
+    <h1>Detailed Analysis</h1>
+    <p class="subtitle">Compare categories, items, and metrics over any time period.</p>
+
+    <div class="comparison-form">
+        <div class="form-row">
+            <label>Metric:
+                <select id="compare-metric">
+                    <option value="cpi">CPI Index</option>
+                    <option value="inflation">Inflation Rate</option>
+                    <option value="price">Item Price</option>
+                </select>
+            </label>
+            <label>Category / Item:
+                <select id="compare-category">
+                    <option value="headline">Headline CPI</option>
+                    <option value="core">Core CPI</option>
+                    <option value="food">Food CPI</option>
+                    <option value="non_food">Non-Food CPI</option>
+                </select>
+            </label>
+            <label>From:
+                <input type="date" id="date-from" value="2022-01-01">
+            </label>
+            <label>To:
+                <input type="date" id="date-to" value="2026-12-31">
+            </label>
+            <button class="btn" onclick="alert('Chart update will be implemented in the next phase.')">Generate Chart</button>
+        </div>
+    </div>
+
+    <div class="chart-container large">
+        <canvas id="analysis-chart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ctx = document.getElementById('analysis-chart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: ['Jan 2022', 'Jul 2022', 'Jan 2023', 'Jul 2023', 'Jan 2024', 'Jul 2024', 'Jan 2025', 'Jul 2025'],
+        datasets: [
+            {
+                label: 'Headline CPI',
+                data: [100, 145, 180, 210, 195, 205, 215, 225],
+                borderColor: '#2563eb',
+                fill: false,
+                tension: 0.3
+            },
+            {
+                label: 'Core CPI',
+                data: [100, 125, 145, 160, 155, 162, 168, 175],
+                borderColor: '#16a34a',
+                fill: false,
+                tension: 0.3
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { display: true },
+            title: { display: true, text: 'Sample Data — Will Populate from API' }
+        },
+        scales: {
+            y: { beginAtZero: false, title: { display: true, text: 'Index Value' } }
+        }
+    }
+});
+</script>
+{% endblock %}
