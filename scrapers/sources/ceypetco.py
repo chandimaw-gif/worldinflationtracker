@@ -101,10 +101,10 @@ class CEYPETCOScraper(BaseScraper):
 
     def _extract_latest_prices(self, soup: BeautifulSoup) -> dict:
         """
-        Extract the most recent row from the historical prices table.
+        Extract the most recent row from the fuel prices table.
         Returns a dict mapping column header -> price.
         """
-        result = {}
+        best_result = {}
 
         tables = soup.find_all('table')
         for table in tables:
@@ -124,6 +124,14 @@ class CEYPETCOScraper(BaseScraper):
             if not headers:
                 continue
 
+            header_text = ' '.join(headers).upper()
+            # Skip lubricant / non-fuel tables
+            if 'CIRCULAR' in header_text or 'DRUM' in header_text:
+                continue
+            # Must have fuel-related headers
+            if not any(x in header_text for x in ['LP 92', 'LP 95', 'LAD', 'PETROL', 'DIESEL', 'FUEL']):
+                continue
+
             # Find the first data row (most recent)
             tbody = table.find('tbody')
             rows = tbody.find_all('tr') if tbody else table.find_all('tr')
@@ -132,6 +140,7 @@ class CEYPETCOScraper(BaseScraper):
             if not data_rows:
                 continue
 
+            result = {}
             latest_row = data_rows[0]
             cells = latest_row.find_all('td')
 
@@ -150,8 +159,8 @@ class CEYPETCOScraper(BaseScraper):
                 if price and price > 0:
                     result[header] = price
 
-            # If we found a valid table with Date + fuel prices, break
-            if result and len(result) > 1:
-                break
+            # Keep the table with the most fuel price columns
+            if len(result) > len(best_result):
+                best_result = result
 
-        return result
+        return best_result
