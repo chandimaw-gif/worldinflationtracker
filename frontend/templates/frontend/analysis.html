@@ -8,61 +8,76 @@
     <p class="subtitle">Compare categories, items, and metrics over any time period.</p>
 
     <div class="comparison-form">
-        <div class="form-row">
-            <label>Metric:
-                <select id="compare-metric">
-                    <option value="cpi">CPI Index</option>
-                    <option value="inflation">Inflation Rate</option>
-                    <option value="price">Item Price</option>
+        <form method="get" class="form-row">
+            <label>Country:
+                <select name="country" onchange="this.form.submit()">
+                    {% for c in countries %}
+                    <option value="{{ c.code }}" {% if current_country and c.code == current_country.code %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
                 </select>
             </label>
-            <label>Category / Item:
-                <select id="compare-category">
-                    <option value="headline">Headline CPI</option>
-                    <option value="core">Core CPI</option>
-                    <option value="food">Food CPI</option>
-                    <option value="non_food">Non-Food CPI</option>
+
+            <label>Items to Compare:
+                <select name="items" multiple size="4">
+                    {% for item in basket_items %}
+                    <option value="{{ item.id }}" {% if item.id in selected_item_ids %}selected{% endif %}>
+                        {{ item.name }}
+                    </option>
+                    {% endfor %}
                 </select>
             </label>
-            <label>From:
-                <input type="date" id="date-from" value="2022-01-01">
-            </label>
-            <label>To:
-                <input type="date" id="date-to" value="2026-12-31">
-            </label>
-            <button class="btn" onclick="alert('Chart update will be implemented in the next phase.')">Generate Chart</button>
-        </div>
+
+            <button type="submit" class="btn">Update Chart</button>
+        </form>
+        <p style="font-size:0.8125rem;color:var(--color-text-muted);margin:0.5rem 0 0;">
+            Hold Ctrl/Cmd to select multiple items. Defaults to first 5 items if none selected.
+        </p>
     </div>
 
     <div class="chart-container large">
         <canvas id="analysis-chart"></canvas>
     </div>
+
+    <h2 style="margin-top:2rem;font-size:1.125rem;">Product Groups</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>COICOP</th>
+                <th>Name</th>
+                <th>Weight</th>
+                <th>Core</th>
+                <th>Items</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for group in product_groups %}
+            <tr>
+                <td>{{ group.coicop_code }}</td>
+                <td>{{ group.name }}</td>
+                <td>{{ group.weight|floatformat:2 }}%</td>
+                <td>{% if group.is_core %}✓{% else %}—{% endif %}</td>
+                <td>{{ group.items.count }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="no-data">No product groups configured for this country.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+const itemChartData = {{ item_chart_data_json|safe }};
+
 const ctx = document.getElementById('analysis-chart').getContext('2d');
 new Chart(ctx, {
     type: 'line',
     data: {
-        labels: ['Jan 2022', 'Jul 2022', 'Jan 2023', 'Jul 2023', 'Jan 2024', 'Jul 2024', 'Jan 2025', 'Jul 2025'],
-        datasets: [
-            {
-                label: 'Headline CPI',
-                data: [100, 145, 180, 210, 195, 205, 215, 225],
-                borderColor: '#2563eb',
-                fill: false,
-                tension: 0.3
-            },
-            {
-                label: 'Core CPI',
-                data: [100, 125, 145, 160, 155, 162, 168, 175],
-                borderColor: '#16a34a',
-                fill: false,
-                tension: 0.3
-            }
-        ]
+        labels: itemChartData.labels,
+        datasets: itemChartData.datasets
     },
     options: {
         responsive: true,
@@ -70,10 +85,10 @@ new Chart(ctx, {
         interaction: { mode: 'index', intersect: false },
         plugins: {
             legend: { display: true },
-            title: { display: true, text: 'Sample Data — Will Populate from API' }
+            title: { display: true, text: 'Price Trends (LKR)' }
         },
         scales: {
-            y: { beginAtZero: false, title: { display: true, text: 'Index Value' } }
+            y: { beginAtZero: false, title: { display: true, text: 'Price (LKR)' } }
         }
     }
 });

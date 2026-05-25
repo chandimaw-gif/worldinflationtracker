@@ -141,6 +141,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'scrapers.tasks.download_cbsl_price_report',
         'schedule': 'crontab(day_of_week=1, hour=9, minute=0)',
     },
+    'compute-monthly-cpi': {
+        'task': 'scrapers.tasks.compute_monthly_cpi',
+        'schedule': 'crontab(day_of_month=2, hour=3, minute=0)',
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [

@@ -14,16 +14,16 @@
                 <select name="country">
                     <option value="">All</option>
                     {% for c in countries %}
-                    <option value="{{ c.code }}" {% if request.GET.country == c.code %}selected{% endif %}>{{ c.name }}</option>
+                    <option value="{{ c.code }}" {% if selected_country == c.code %}selected{% endif %}>{{ c.name }}</option>
                     {% endfor %}
                 </select>
             </label>
             <label>
                 Search:
-                <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Item name...">
+                <input type="text" name="item" value="{{ selected_item }}" placeholder="Item name...">
             </label>
             <button type="submit" class="btn">Filter</button>
-            <a href="?export=csv" class="btn secondary">Export CSV</a>
+
         </form>
     </div>
 

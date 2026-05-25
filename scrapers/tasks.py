@@ -204,20 +204,90 @@ def scrape_utility_prices(self):
 def fetch_news_feeds(self):
     """
     Fetch RSS feeds every 30 minutes.
-    Placeholder — implement with feedparser for specific Sri Lankan news sources.
+    Sources: EconomyNext, DailyMirror, Ada Derana Business.
     """
+    import feedparser
+    from core.models import NewsArticle, Country
+    from datetime import datetime
+    from django.utils import timezone
+
     logger.info("Fetching news RSS feeds...")
-    # TODO: Implement RSS feed parsing for:
-    # - DailyMirror (economy)
-    # - The Sunday Times (business)
-    # - EconomyNext
-    # - Ada Derana (business)
-    return "News feed fetching not yet implemented."
+
+    feeds = [
+        ('https://economynext.com/rss.xml', 'EconomyNext'),
+        ('https://www.dailymirror.lk/RSS_Feeds/business.rss', 'DailyMirror'),
+        ('https://www.adaderana.lk/rss.php?cat=business', 'Ada Derana'),
+    ]
+
+    created_count = 0
+    lka = Country.objects.filter(code='LKA').first()
+
+    for url, source_name in feeds:
+        try:
+            parsed = feedparser.parse(url)
+            for entry in parsed.entries[:10]:
+                title = entry.get('title', '').strip()
+                link = entry.get('link', '').strip()
+                summary = entry.get('summary', '')[:500]
+                published = entry.get('published_parsed') or entry.get('updated_parsed')
+
+                if not title or not link:
+                    continue
+
+                published_dt = None
+                if published:
+                    published_dt = datetime(*published[:6], tzinfo=timezone.get_current_timezone())
+
+                _, created = NewsArticle.objects.get_or_create(
+                    source_url=link,
+                    defaults={
+                        'country': lka,
+                        'title': title,
+                        'summary': summary,
+                        'source_name': source_name,
+                        'published_at': published_dt,
+                        'category': 'economy',
+                    }
+                )
+                if created:
+                    created_count += 1
+
+            logger.info(f"{source_name}: fetched {len(parsed.entries)} entries")
+        except Exception as exc:
+            logger.exception(f"Failed to fetch {source_name} RSS")
+
+    logger.info(f"News fetch complete. Created {created_count} new articles.")
+    return f"Created {created_count} new articles."
 
 
 # ---------------------------------------------------------------------------
 # Ad-hoc / utility tasks
 # ---------------------------------------------------------------------------
+
+@shared_task
+def compute_monthly_cpi():
+    """
+    Compute CPI indices for the current month.
+    Runs on the 2nd of every month to ensure all monthly prices are collected.
+    """
+    import subprocess
+    from django.conf import settings
+
+    logger.info("Computing monthly CPI...")
+    try:
+        result = subprocess.run(
+            ['python3', 'manage.py', 'compute_cpi', '--country', 'LKA'],
+            cwd=settings.BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        logger.info(f"CPI compute: {result.stdout}")
+        return result.stdout
+    except Exception as exc:
+        logger.exception("CPI computation failed")
+        return str(exc)
+
 
 @shared_task
 def run_manual_entry_scraper(json_path: str = None):

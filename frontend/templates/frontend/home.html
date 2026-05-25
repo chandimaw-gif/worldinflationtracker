@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Sri Lanka Inflation Rate — {{ current_month_year|default:"2026" }} | World Inflation Tracker{% endblock %}
+{% block title %}{% if current_country %}{{ current_country.name }}{% else %}Sri Lanka{% endif %} Inflation Rate — {{ current_month_year|default:"2026" }} | World Inflation Tracker{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -10,9 +10,9 @@
         
         <div class="country-selector">
             <label for="country-select">Select Country:</label>
-            <select id="country-select" onchange="window.location.href='/'+this.value+'/'">
+            <select id="country-select" onchange="window.location.href='?country='+this.value">
                 {% for c in countries %}
-                <option value="{{ c.code|lower }}" {% if c.code == 'LKA' %}selected{% endif %}>{{ c.name }}</option>
+                <option value="{{ c.code }}" {% if current_country and c.code == current_country.code %}selected{% endif %}>{{ c.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -22,20 +22,62 @@
         <div class="stats-grid">
             <div class="stat-card headline">
                 <h3>Headline CPI</h3>
-                <div class="stat-value" id="headline-cpi">—</div>
-                <div class="stat-change" id="headline-change">YoY Change</div>
+                <div class="stat-value" id="headline-cpi">
+                    {% if headline_cpi %}
+                        {{ headline_cpi.index_value|floatformat:2 }}
+                    {% else %}—{% endif %}
+                </div>
+                <div class="stat-change" id="headline-change">
+                    {% if headline_cpi and headline_cpi.yoy_inflation != None %}
+                        <span class="{% if headline_cpi.yoy_inflation > 0 %}positive{% elif headline_cpi.yoy_inflation < 0 %}negative{% else %}neutral{% endif %}">
+                            {{ headline_cpi.yoy_inflation|floatformat:2 }}% YoY
+                        </span>
+                    {% else %}
+                        <span class="neutral">YoY data unavailable</span>
+                    {% endif %}
+                </div>
             </div>
             <div class="stat-card core">
                 <h3>Core CPI</h3>
-                <div class="stat-value" id="core-cpi">—</div>
-                <div class="stat-change" id="core-change">YoY Change</div>
+                <div class="stat-value" id="core-cpi">
+                    {% if core_cpi %}
+                        {{ core_cpi.index_value|floatformat:2 }}
+                    {% else %}—{% endif %}
+                </div>
+                <div class="stat-change" id="core-change">
+                    {% if core_cpi and core_cpi.yoy_inflation != None %}
+                        <span class="{% if core_cpi.yoy_inflation > 0 %}positive{% elif core_cpi.yoy_inflation < 0 %}negative{% else %}neutral{% endif %}">
+                            {{ core_cpi.yoy_inflation|floatformat:2 }}% YoY
+                        </span>
+                    {% else %}
+                        <span class="neutral">YoY data unavailable</span>
+                    {% endif %}
+                </div>
             </div>
             <div class="stat-card food">
                 <h3>Food CPI</h3>
-                <div class="stat-value" id="food-cpi">—</div>
-                <div class="stat-change" id="food-change">YoY Change</div>
+                <div class="stat-value" id="food-cpi">
+                    {% if food_cpi %}
+                        {{ food_cpi.index_value|floatformat:2 }}
+                    {% else %}—{% endif %}
+                </div>
+                <div class="stat-change" id="food-change">
+                    {% if food_cpi and food_cpi.yoy_inflation != None %}
+                        <span class="{% if food_cpi.yoy_inflation > 0 %}positive{% elif food_cpi.yoy_inflation < 0 %}negative{% else %}neutral{% endif %}">
+                            {{ food_cpi.yoy_inflation|floatformat:2 }}% YoY
+                        </span>
+                    {% else %}
+                        <span class="neutral">YoY data unavailable</span>
+                    {% endif %}
+                </div>
             </div>
         </div>
+
+        {% if not headline_cpi and not core_cpi and not food_cpi %}
+        <div class="widget" style="text-align:center;">
+            <p class="no-data">CPI data is being computed from collected price observations. Check back shortly, or visit the <a href="{% url 'price-log' %}">Price Log</a> to see raw data.</p>
+        </div>
+        {% endif %}
 
         {% if ads.mid_content_1 %}
         <div class="ad-container ad-mid" data-slot="mid_content_1">
@@ -58,7 +100,7 @@
                 </select>
                 <select id="range-select">
                     <option value="1y">Last 1 Year</option>
-                    <option value="5y">Last 5 Years</option>
+                    <option value="2y">Last 2 Years</option>
                     <option value="all">All Time</option>
                 </select>
             </div>
@@ -73,7 +115,7 @@
             <div class="widget comparison-tool">
                 <h3>Comparison Tool</h3>
                 <p>Select categories or items to compare over time.</p>
-                <a href="{% url 'analysis' %}" class="btn">Go to Analysis →</a>
+                <a href="{% url 'analysis' %}?country={{ current_country.code|default:'LKA' }}" class="btn">Go to Analysis →</a>
             </div>
         </aside>
 
@@ -92,7 +134,14 @@
 
             <div class="widget exchange-widget">
                 <h3>Exchange Rate</h3>
-                <p class="rate">USD/LKR: <strong id="usd-lkr-rate">—</strong></p>
+                <p class="rate">USD/LKR: <strong id="usd-lkr-rate">
+                    {% if latest_exchange_rate %}
+                        {{ latest_exchange_rate.rate|floatformat:2 }}
+                    {% else %}—{% endif %}
+                </strong></p>
+                {% if latest_exchange_rate %}
+                <p class="news-meta">Updated {{ latest_exchange_rate.rate_date }}</p>
+                {% endif %}
                 <a href="{% url 'exchange-rates' %}">View Full →</a>
             </div>
 
@@ -113,7 +162,20 @@
     <section class="news-feed">
         <h2>📰 Latest Economic News</h2>
         <div class="news-list" id="news-list">
-            <p class="loading">Loading news...</p>
+            {% if news_articles %}
+                {% for article in news_articles %}
+                <article class="news-item">
+                    <h4><a href="{{ article.source_url }}" target="_blank" rel="noopener">{{ article.title }}</a></h4>
+                    <div class="news-meta">
+                        {% if article.category %}<span class="news-category">{{ article.category }}</span>{% endif %}
+                        {{ article.source_name }}
+                        {% if article.published_at %}· {{ article.published_at|date:"M j, Y" }}{% endif %}
+                    </div>
+                </article>
+                {% endfor %}
+            {% else %}
+                <p class="no-data">No news articles available yet.</p>
+            {% endif %}
         </div>
     </section>
 </div>
@@ -121,20 +183,50 @@
 
 {% block extra_js %}
 <script>
+const chartData = {{ chart_data_json|safe }};
+
 const ctx = document.getElementById('main-chart').getContext('2d');
+const metricSelect = document.getElementById('metric-select');
+const rangeSelect = document.getElementById('range-select');
+
+const metricColors = {
+    headline: { border: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
+    core: { border: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)' },
+    food: { border: '#ca8a04', bg: 'rgba(202, 138, 4, 0.1)' }
+};
+
+function filterByRange(labels, data, range) {
+    let sliceFrom = 0;
+    if (range === '1y') sliceFrom = Math.max(0, labels.length - 12);
+    else if (range === '2y') sliceFrom = Math.max(0, labels.length - 24);
+    // 'all' keeps everything
+    return {
+        labels: labels.slice(sliceFrom),
+        data: data.slice(sliceFrom)
+    };
+}
+
+function buildDataset(metric, range) {
+    const colors = metricColors[metric] || metricColors.headline;
+    const filtered = filterByRange(chartData.labels, chartData[metric] || [], range);
+    return {
+        labels: filtered.labels,
+        datasets: [{
+            label: metric.charAt(0).toUpperCase() + metric.slice(1) + ' CPI',
+            data: filtered.data,
+            borderColor: colors.border,
+            backgroundColor: colors.bg,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 5
+        }]
+    };
+}
+
 const mainChart = new Chart(ctx, {
     type: 'line',
-    data: {
-        labels: [],
-        datasets: [{
-            label: 'CPI Index',
-            data: [],
-            borderColor: '#2563eb',
-            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-            fill: true,
-            tension: 0.3
-        }]
-    },
+    data: buildDataset('headline', '1y'),
     options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -144,7 +236,7 @@ const mainChart = new Chart(ctx, {
             tooltip: {
                 callbacks: {
                     label: function(context) {
-                        return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
+                        return context.dataset.label + ': ' + (context.parsed.y !== null ? context.parsed.y.toFixed(2) : 'N/A');
                     }
                 }
             }
@@ -157,5 +249,17 @@ const mainChart = new Chart(ctx, {
         }
     }
 });
+
+function updateChart() {
+    const metric = metricSelect.value;
+    const range = rangeSelect.value;
+    const newData = buildDataset(metric, range);
+    mainChart.data.labels = newData.labels;
+    mainChart.data.datasets = newData.datasets;
+    mainChart.update();
+}
+
+metricSelect.addEventListener('change', updateChart);
+rangeSelect.addEventListener('change', updateChart);
 </script>
 {% endblock %}

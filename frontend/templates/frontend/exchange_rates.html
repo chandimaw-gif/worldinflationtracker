@@ -10,29 +10,43 @@
     <div class="stats-grid mini">
         <div class="stat-card">
             <h4>Current USD/LKR</h4>
-            <div class="stat-value" id="current-rate">—</div>
+            <div class="stat-value" id="current-rate">
+                {% if latest_rate %}{{ latest_rate.rate|floatformat:2 }}{% else %}—{% endif %}
+            </div>
         </div>
         <div class="stat-card">
-            <h4>52-Week High</h4>
-            <div class="stat-value" id="high-rate">—</div>
+            <h4>90-Day High</h4>
+            <div class="stat-value" id="high-rate">
+                {% if high_rate %}{{ high_rate|floatformat:2 }}{% else %}—{% endif %}
+            </div>
         </div>
         <div class="stat-card">
-            <h4>52-Week Low</h4>
-            <div class="stat-value" id="low-rate">—</div>
+            <h4>90-Day Low</h4>
+            <div class="stat-value" id="low-rate">
+                {% if low_rate %}{{ low_rate|floatformat:2 }}{% else %}—{% endif %}
+            </div>
         </div>
         <div class="stat-card">
             <h4>YoY Change</h4>
-            <div class="stat-value" id="yoy-rate">—</div>
+            <div class="stat-value" id="yoy-rate">
+                {% if yoy_change != None %}
+                    <span class="{% if yoy_change > 0 %}positive{% elif yoy_change < 0 %}negative{% else %}neutral{% endif %}">
+                        {{ yoy_change|floatformat:2 }}%
+                    </span>
+                {% else %}—{% endif %}
+            </div>
         </div>
     </div>
 
-    <div class="chart-container">
-        <canvas id="exchange-chart"></canvas>
+    <div class="chart-section">
+        <div class="chart-container">
+            <canvas id="exchange-chart"></canvas>
+        </div>
     </div>
 
     <div class="table-wrapper">
         <h3>Recent Rates</h3>
-        <table class="data-table">
+        <table>
             <thead>
                 <tr><th>Date</th><th>USD/LKR</th><th>Source</th></tr>
             </thead>
@@ -41,10 +55,10 @@
                 <tr>
                     <td>{{ r.rate_date }}</td>
                     <td class="numeric">{{ r.rate|floatformat:4 }}</td>
-                    <td>{{ r.source|default:"CBSL" }}</td>
+                    <td>{{ r.source|default:"open.er-api.com" }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="3" class="empty">No exchange rate data yet.</td></tr>
+                <tr><td colspan="3" class="no-data">No exchange rate data yet.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -54,24 +68,28 @@
 
 {% block extra_js %}
 <script>
+const exchangeChartData = {{ exchange_chart_json|safe }};
+
 const ctx = document.getElementById('exchange-chart').getContext('2d');
 new Chart(ctx, {
     type: 'line',
     data: {
-        labels: [],
+        labels: exchangeChartData.labels,
         datasets: [{
             label: 'USD/LKR',
-            data: [],
+            data: exchangeChartData.data,
             borderColor: '#2563eb',
             backgroundColor: 'rgba(37, 99, 235, 0.1)',
             fill: true,
-            tension: 0.3
+            tension: 0.3,
+            pointRadius: 2,
+            pointHoverRadius: 5
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { title: { display: true, text: 'USD/LKR Exchange Rate' } },
+        plugins: { title: { display: true, text: 'USD/LKR Exchange Rate (Last 90 Days)' } },
         scales: { y: { title: { display: true, text: 'LKR per 1 USD' } } }
     }
 });
