@@ -214,9 +214,9 @@ def fetch_news_feeds(self):
     logger.info("Fetching news RSS feeds...")
 
     feeds = [
-        ('https://economynext.com/rss.xml', 'EconomyNext'),
-        ('https://www.dailymirror.lk/RSS_Feeds/business.rss', 'DailyMirror'),
-        ('https://www.adaderana.lk/rss.php?cat=business', 'Ada Derana'),
+        ('https://economynext.com/feed/', 'EconomyNext'),
+        ('https://www.adaderana.lk/rss.php', 'Ada Derana'),
+        ('https://www.newsfirst.lk/feed', 'NewsFirst'),
     ]
 
     created_count = 0
@@ -224,7 +224,10 @@ def fetch_news_feeds(self):
 
     for url, source_name in feeds:
         try:
-            parsed = feedparser.parse(url)
+            parsed = feedparser.parse(url, agent='Mozilla/5.0 (compatible; WorldInflationTracker/1.0)')
+            if not parsed.entries:
+                logger.warning(f"{source_name}: no entries found (status={parsed.get('status', 'unknown')})")
+                continue
             for entry in parsed.entries[:10]:
                 title = entry.get('title', '').strip()
                 link = entry.get('link', '').strip()
