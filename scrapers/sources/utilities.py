@@ -28,6 +28,8 @@ class CEBTariffScraper(BaseScraper):
     RATE_LIMIT_SECONDS = 2.0
 
     def scrape(self):
+        import requests
+        from bs4 import BeautifulSoup
         from core.models import BasketItem
 
         today = date.today()
@@ -43,17 +45,18 @@ class CEBTariffScraper(BaseScraper):
             return
 
         try:
-            soup = self.fetch_soup('/tariff_catergory')
+            resp = requests.get(
+                'https://www.ceb.lk/tariff_catergory',
+                headers={'User-Agent': 'Mozilla/5.0'},
+                timeout=self.DEFAULT_TIMEOUT,
+            )
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, 'html.parser')
         except Exception as e:
             self.log_error(f"Failed to fetch CEB tariff page: {e}")
             self.items_failed += 1
             return
 
-        # CEB uses CSS-generated responsive tables.
-        # Look for the first table with class="table_1" cells.
-        # The structure is: <td class="table_1">0 - 30</td>
-        #                   <td class="table_1" style="text-align:right">2.5</td>
-        #                   <td class="table_1" style="text-align:right">30.00</td>
         rate = self._extract_domestic_rate(soup)
 
         if rate:
@@ -71,15 +74,10 @@ class CEBTariffScraper(BaseScraper):
 
     def _extract_domestic_rate(self, soup) -> Decimal | None:
         """Extract the domestic 0-30 kWh per-unit rate from table_1."""
-        # Find all rows with table_1 class cells
         all_cells = soup.find_all('td', class_='table_1')
-
-        # The pattern is: block | unit_charge | fixed_charge (repeating)
-        # Look for the first occurrence of "0 - 30" or "0-30"
         for i, cell in enumerate(all_cells):
             text = cell.get_text(strip=True)
             if '0' in text and '30' in text:
-                # The next cell should be the unit charge
                 if i + 1 < len(all_cells):
                     charge_cell = all_cells[i + 1]
                     price = self.parse_price(charge_cell.get_text())
