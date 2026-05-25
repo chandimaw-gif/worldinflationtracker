@@ -3,10 +3,10 @@ Utility price scrapers for Sri Lanka.
 
 Targets:
 - CEB electricity tariffs (monthly)
-- Litro Gas 12.5kg cylinder (daily)
+- Litro Gas 12.5kg cylinder (daily) — JS-rendered, manual entry fallback
 - Laugfs Gas 12.5kg cylinder (daily)
-- Dialog mobile plans (weekly)
-- SLT broadband plans (monthly)
+- Dialog mobile plans (weekly) — data works, voice needs manual entry
+- SLT broadband plans (monthly) — JS-rendered, manual entry fallback
 """
 
 import re
@@ -20,6 +20,7 @@ class CEBTariffScraper(BaseScraper):
     """
     Scrape CEB domestic electricity tariff.
     https://www.ceb.lk/tariff_catergory
+    The page uses responsive CSS tables with class-based cells.
     """
 
     SOURCE_NAME = "CEB"
@@ -48,7 +49,11 @@ class CEBTariffScraper(BaseScraper):
             self.items_failed += 1
             return
 
-        # CEB tariffs are usually in tables. Look for "Domestic" and "0-60" or per-kWh rates.
+        # CEB uses CSS-generated responsive tables.
+        # Look for the first table with class="table_1" cells.
+        # The structure is: <td class="table_1">0 - 30</td>
+        #                   <td class="table_1" style="text-align:right">2.5</td>
+        #                   <td class="table_1" style="text-align:right">30.00</td>
         rate = self._extract_domestic_rate(soup)
 
         if rate:
@@ -58,49 +63,35 @@ class CEBTariffScraper(BaseScraper):
                 observation_date=today,
                 source_url='https://www.ceb.lk/tariff_catergory',
                 source_name='CEB',
-                raw_data={'tariff_block': '0-60 kWh domestic'},
+                raw_data={'tariff_block': '0-30 kWh domestic', 'unit': 'Rs/kWh'},
             )
         else:
             self.log_error("Could not extract CEB domestic tariff rate")
             self.items_failed += 1
 
     def _extract_domestic_rate(self, soup) -> Decimal | None:
-        """Extract the domestic 0-60 kWh per-unit rate."""
-        # Look for tables containing tariff information
-        tables = soup.find_all('table')
-        for table in tables:
-            text = table.get_text().upper()
-            if 'DOMESTIC' in text or '0-60' in text or 'PER UNIT' in text:
-                rows = table.find_all('tr')
-                for row in rows:
-                    cells = row.find_all(['td', 'th'])
-                    row_text = ' '.join(c.get_text(strip=True) for c in cells).upper()
+        """Extract the domestic 0-30 kWh per-unit rate from table_1."""
+        # Find all rows with table_1 class cells
+        all_cells = soup.find_all('td', class_='table_1')
 
-                    # Look for 0-60 kWh block
-                    if '0-60' in row_text or '0_60' in row_text or 'FIRST 60' in row_text:
-                        for cell in cells:
-                            price = self.parse_price(cell.get_text())
-                            if price and 5 < price < 100:  # CEB domestic rate should be in this range
-                                return price
-
-        # Fallback: search entire page for patterns like "Rs. 12.50 per unit" near "Domestic"
-        page_text = soup.get_text()
-        match = re.search(
-            r'domestic.*?0[-\s]60.*?rs\.?\s*([\d,]+\.?\d*)',
-            page_text,
-            re.IGNORECASE | re.DOTALL
-        )
-        if match:
-            price = self.parse_price(match.group(1))
-            if price and 5 < price < 100:
-                return price
-
+        # The pattern is: block | unit_charge | fixed_charge (repeating)
+        # Look for the first occurrence of "0 - 30" or "0-30"
+        for i, cell in enumerate(all_cells):
+            text = cell.get_text(strip=True)
+            if '0' in text and '30' in text:
+                # The next cell should be the unit charge
+                if i + 1 < len(all_cells):
+                    charge_cell = all_cells[i + 1]
+                    price = self.parse_price(charge_cell.get_text())
+                    if price and 1 < price < 50:
+                        return price
         return None
 
 
 class LitroGasScraper(BaseScraper):
     """
-    Scrape Litro Gas 12.5kg cylinder price.
+    Litro Gas prices are loaded via JavaScript on their WordPress page.
+    This scraper falls back to manual entry.
     https://www.litrogas.com/price-list/
     """
 
@@ -109,72 +100,11 @@ class LitroGasScraper(BaseScraper):
     RATE_LIMIT_SECONDS = 2.0
 
     def scrape(self):
-        from core.models import BasketItem
-
-        today = date.today()
-        item = BasketItem.objects.filter(
-            country__code=self.COUNTRY_CODE,
-            name__icontains='Litro',
-            is_active=True,
-        ).filter(
-            name__icontains='12.5kg',
-        ).first()
-
-        if not item:
-            self.log_error("Litro Gas basket item not found")
-            self.items_failed += 1
-            return
-
-        try:
-            soup = self.fetch_soup('/price-list/')
-        except Exception as e:
-            self.log_error(f"Failed to fetch Litro price page: {e}")
-            self.items_failed += 1
-            return
-
-        price = self._extract_12_5kg_price(soup)
-
-        if price:
-            self.save_price(
-                item=item,
-                price=price,
-                observation_date=today,
-                source_url='https://www.litrogas.com/price-list/',
-                source_name='Litro Gas',
-                raw_data={'cylinder_size': '12.5kg'},
-            )
-        else:
-            self.log_error("Could not extract Litro 12.5kg price")
-            self.items_failed += 1
-
-    def _extract_12_5kg_price(self, soup) -> Decimal | None:
-        """Extract 12.5kg domestic cylinder price."""
-        # Litro price lists are often in tables or list items
-        tables = soup.find_all('table')
-        for table in tables:
-            rows = table.find_all('tr')
-            for row in rows:
-                cells = row.find_all(['td', 'th'])
-                row_text = ' '.join(c.get_text(strip=True) for c in cells).upper()
-                if '12.5' in row_text or '12.5KG' in row_text or 'DOMESTIC' in row_text:
-                    for cell in cells:
-                        price = self.parse_price(cell.get_text())
-                        if price and price > 1000:  # Gas cylinder > 1000 LKR
-                            return price
-
-        # Fallback: search all text
-        page_text = soup.get_text()
-        match = re.search(
-            r'12\.5\s*kg.*?rs\.?\s*([\d,]+\.?\d*)',
-            page_text,
-            re.IGNORECASE | re.DOTALL
+        self.log_error(
+            "Litro Gas price-list page loads prices via JavaScript. "
+            "Please enter manually via: python manage.py enter_prices --item 'Litro' --price <PRICE>"
         )
-        if match:
-            price = self.parse_price(match.group(1))
-            if price and price > 1000:
-                return price
-
-        return None
+        self.items_failed += 1
 
 
 class LaugfsGasScraper(BaseScraper):
@@ -220,7 +150,7 @@ class LaugfsGasScraper(BaseScraper):
                 observation_date=today,
                 source_url='https://www.laugfsgas.lk/pricelist.php',
                 source_name='Laugfs Gas',
-                raw_data={'cylinder_size': '12.5kg'},
+                raw_data={'cylinder_size': '12.5kg', 'district': 'Colombo'},
             )
         else:
             self.log_error("Could not extract Laugfs 12.5kg price")
@@ -228,28 +158,30 @@ class LaugfsGasScraper(BaseScraper):
 
     def _extract_12_5kg_price(self, soup) -> Decimal | None:
         """Extract 12.5kg domestic cylinder price from Laugfs."""
+        # Find the table with "12.5kg (Rs)" header
         tables = soup.find_all('table')
         for table in tables:
-            rows = table.find_all('tr')
-            for row in rows:
-                cells = row.find_all(['td', 'th'])
-                row_text = ' '.join(c.get_text(strip=True) for c in cells).upper()
-                if '12.5' in row_text or '12.5KG' in row_text or 'DOMESTIC' in row_text:
-                    for cell in cells:
-                        price = self.parse_price(cell.get_text())
-                        if price and price > 1000:
-                            return price
+            headers = [th.get_text(strip=True) for th in table.find_all('th')]
+            if not any('12.5' in h for h in headers):
+                continue
 
-        page_text = soup.get_text()
-        match = re.search(
-            r'12\.5\s*kg.*?rs\.?\s*([\d,]+\.?\d*)',
-            page_text,
-            re.IGNORECASE | re.DOTALL
-        )
-        if match:
-            price = self.parse_price(match.group(1))
-            if price and price > 1000:
-                return price
+            # Find the 12.5kg column index
+            col_idx = None
+            for i, h in enumerate(headers):
+                if '12.5' in h:
+                    col_idx = i
+                    break
+
+            if col_idx is None:
+                continue
+
+            # Get the first data row
+            for tr in table.find_all('tr'):
+                cells = tr.find_all('td')
+                if len(cells) > col_idx:
+                    price = self.parse_price(cells[col_idx].get_text())
+                    if price and price > 1000:
+                        return price
 
         return None
 
@@ -270,7 +202,7 @@ class DialogScraper(BaseScraper):
 
         today = date.today()
 
-        # Scrape voice rate
+        # Scrape voice rate — Dialog bundles don't show a simple per-minute rate
         voice_item = BasketItem.objects.filter(
             country__code=self.COUNTRY_CODE,
             name__icontains='Dialog',
@@ -300,26 +232,11 @@ class DialogScraper(BaseScraper):
             self.items_failed += 1
 
     def _scrape_voice_rate(self, item, today: date):
-        try:
-            soup = self.fetch_soup('/mobile/prepaid/plans')
-        except Exception as e:
-            self.log_error(f"Failed to fetch Dialog voice page: {e}")
-            self.items_failed += 1
-            return
-
-        rate = self._extract_per_minute_rate(soup)
-        if rate:
-            self.save_price(
-                item=item,
-                price=rate,
-                observation_date=today,
-                source_url='https://dialog.lk/mobile/prepaid/plans',
-                source_name='Dialog',
-                raw_data={'rate_type': 'per minute voice'},
-            )
-        else:
-            self.log_error("Could not extract Dialog per-minute voice rate")
-            self.items_failed += 1
+        self.log_error(
+            "Dialog prepaid plans are bundle-based; no simple per-minute rate displayed. "
+            "Please enter manually via: python manage.py enter_prices --item 'Dialog voice' --price <PRICE>"
+        )
+        self.items_failed += 1
 
     def _scrape_data_rate(self, item, today: date):
         try:
@@ -342,21 +259,6 @@ class DialogScraper(BaseScraper):
         else:
             self.log_error("Could not extract Dialog data package rate")
             self.items_failed += 1
-
-    def _extract_per_minute_rate(self, soup) -> Decimal | None:
-        """Extract per-minute voice call rate."""
-        page_text = soup.get_text()
-        # Common patterns: "Rs. 1.50 per minute", "LKR 2/min"
-        match = re.search(
-            r'(?:rs\.?|lkr)\s*([\d,]+\.?\d*)\s*(?:per\s*min|/min)',
-            page_text,
-            re.IGNORECASE
-        )
-        if match:
-            price = self.parse_price(match.group(1))
-            if price and 0.5 < price < 50:
-                return price
-        return None
 
     def _extract_data_package_rate(self, soup) -> Decimal | None:
         """Extract 1.5GB monthly add-on price."""
@@ -388,7 +290,8 @@ class DialogScraper(BaseScraper):
 
 class SLTScraper(BaseScraper):
     """
-    Scrape SLT Fibre broadband 30Mbps plan price.
+    SLT Fibre broadband prices are loaded via JavaScript.
+    Falls back to manual entry.
     https://www.slt.lk
     """
 
@@ -397,67 +300,8 @@ class SLTScraper(BaseScraper):
     RATE_LIMIT_SECONDS = 2.0
 
     def scrape(self):
-        from core.models import BasketItem
-
-        today = date.today()
-        item = BasketItem.objects.filter(
-            country__code=self.COUNTRY_CODE,
-            name__icontains='SLT',
-            is_active=True,
-        ).filter(
-            name__icontains='Fibre',
-        ).first()
-
-        if not item:
-            self.log_error("SLT Fibre basket item not found")
-            self.items_failed += 1
-            return
-
-        try:
-            soup = self.fetch_soup('/')
-        except Exception as e:
-            self.log_error(f"Failed to fetch SLT page: {e}")
-            self.items_failed += 1
-            return
-
-        price = self._extract_30mbps_price(soup)
-
-        if price:
-            self.save_price(
-                item=item,
-                price=price,
-                observation_date=today,
-                source_url='https://www.slt.lk',
-                source_name='SLT',
-                raw_data={'plan': 'Fibre 30Mbps monthly'},
-            )
-        else:
-            self.log_error("Could not extract SLT 30Mbps plan price")
-            self.items_failed += 1
-
-    def _extract_30mbps_price(self, soup) -> Decimal | None:
-        """Extract 30Mbps fibre plan monthly price."""
-        page_text = soup.get_text()
-        # Look for "30Mbps" or "30 Mbps" near a price
-        match = re.search(
-            r'30\s*mbps.*?rs\.?\s*([\d,]+\.?\d*)',
-            page_text,
-            re.IGNORECASE | re.DOTALL
+        self.log_error(
+            "SLT Fibre prices are loaded via JavaScript. "
+            "Please enter manually via: python manage.py enter_prices --item 'SLT Fibre' --price <PRICE>"
         )
-        if match:
-            price = self.parse_price(match.group(1))
-            if price and price > 500:
-                return price
-
-        # Fallback: look for broadband prices
-        match = re.search(
-            r'(?:fibre|broadband).*?rs\.?\s*([\d,]+\.?\d*)',
-            page_text,
-            re.IGNORECASE | re.DOTALL
-        )
-        if match:
-            price = self.parse_price(match.group(1))
-            if price and price > 500:
-                return price
-
-        return None
+        self.items_failed += 1
