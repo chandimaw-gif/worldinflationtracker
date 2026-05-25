@@ -270,3 +270,30 @@ def run_all_scrapers():
         'total_scraped': sum(r.get('items_scraped', 0) for r in all_results),
         'total_failed': sum(r.get('items_failed', 0) for r in all_results),
     }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def download_cbsl_price_report(self):
+    """
+    Download the latest CBSL Daily Price Report PDF.
+    Runs every Monday at 9:00 AM.
+    """
+    import subprocess
+    from django.conf import settings
+
+    report_dir = os.path.join(settings.BASE_DIR, 'data', 'cbsl_reports')
+    os.makedirs(report_dir, exist_ok=True)
+
+    try:
+        result = subprocess.run(
+            ['python3', 'manage.py', 'download_cbsl_report'],
+            cwd=settings.BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        logger.info(f"CBSL report download: {result.stdout}")
+        return result.stdout
+    except Exception as exc:
+        logger.exception("CBSL report download failed")
+        raise self.retry(exc=exc)

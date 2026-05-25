@@ -137,6 +137,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'scrapers.tasks.fetch_news_feeds',
         'schedule': 1800.0,  # every 30 minutes
     },
+    'download-cbsl-report-weekly': {
+        'task': 'scrapers.tasks.download_cbsl_price_report',
+        'schedule': 'crontab(day_of_week=1, hour=9, minute=0)',
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [
