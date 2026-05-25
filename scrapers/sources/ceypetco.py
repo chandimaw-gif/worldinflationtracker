@@ -92,13 +92,15 @@ class CEYPETCOScraper(BaseScraper):
         Regex-based extraction from raw HTML.
         CEYPETCO's page has encoding issues that break BS4.
         """
+        import requests
         try:
-            resp = self.session.get(
+            resp = requests.get(
                 'https://ceypetco.gov.lk/historical-prices/',
+                headers={'User-Agent': 'Mozilla/5.0'},
                 timeout=self.DEFAULT_TIMEOUT,
             )
             resp.raise_for_status()
-            html = resp.content.decode('utf-8', errors='replace')
+            html = resp.text
         except Exception as e:
             self.log_error(f"Regex fetch failed: {e}")
             return {}
@@ -133,11 +135,13 @@ class CEYPETCOScraper(BaseScraper):
                 break
 
         if not best_table or not best_headers:
+            self.log_error(f"No fuel table found. Tables found: {len(all_headers)}")
             return {}
 
         # Extract the first data row
         rows = ROW_RE.findall(best_table)
         if not rows:
+            self.log_error("No data rows found in fuel table")
             return {}
 
         date_str = rows[0][0]
