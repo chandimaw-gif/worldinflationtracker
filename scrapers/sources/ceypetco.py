@@ -13,8 +13,6 @@ import re
 from decimal import Decimal
 from datetime import datetime, date
 
-from bs4 import BeautifulSoup
-
 from scrapers.base import BaseScraper
 
 
@@ -38,17 +36,7 @@ class CEYPETCOScraper(BaseScraper):
         from core.models import BasketItem
 
         today = date.today()
-
-        try:
-            soup = self.fetch_soup('/historical-prices/')
-        except Exception as e:
-            self.log_error(f"Failed to fetch CEYPETCO page: {e}")
-            self.items_failed += 3  # One per fuel type
-            return
-
-        # The page has a table with columns:
-        # Date | LP 95 | LP 92 | LAD | LSD | LK | LIK | FUR. 800 | FUR 1500 (High) | FUR. 1500 (Low)
-        latest_prices = self._extract_latest_prices(soup)
+        latest_prices = self._extract_via_regex()
 
         if not latest_prices:
             self.log_error("Could not extract any fuel prices from CEYPETCO table")
@@ -98,14 +86,6 @@ class CEYPETCOScraper(BaseScraper):
             else:
                 self.log_error(f"Could not find price for {item_name_fragments} in columns: {list(latest_prices.keys())}")
                 self.items_failed += 1
-
-    def _extract_latest_prices(self, soup: BeautifulSoup) -> dict:
-        """
-        Extract the most recent row from the fuel prices table.
-        Uses regex on raw HTML (most reliable for CEYPETCO's encoding).
-        Returns a dict mapping column header -> price.
-        """
-        return self._extract_via_regex()
 
     def _extract_via_regex(self) -> dict:
         """
