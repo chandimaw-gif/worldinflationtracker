@@ -51,7 +51,7 @@ class Command(BaseCommand):
         prices = self._extract_prices(pdf_path)
 
         if not prices:
-            self.stdout.write(self.style.WARNING("No prices extracted. Is pdftotext available?"))
+            self.stdout.write(self.style.WARNING("No prices extracted from PDF."))
             return
 
         self._display_prices(prices)
@@ -73,85 +73,75 @@ class Command(BaseCommand):
         try:
             from pypdf import PdfReader
             reader = PdfReader(pdf_path)
-            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+            all_text = "\n".join(page.extract_text() or "" for page in reader.pages)
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"PDF parsing failed: {e}"))
             return {}
 
         prices = {}
 
-        date_match = re.search(r'(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})', text)
+        # Extract report date
+        date_match = re.search(r'(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})', all_text)
         if date_match:
             prices['_report_date'] = f"{date_match.group(3)}-{date_match.group(2)}-{date_match.group(1)}"
 
-        wholesale_section = self._extract_wholesale_section(text)
-
+        # Extract wholesale prices (first "Today" price for each item)
         for cbsl_name, basket_name in CBSL_TO_BASKET.items():
-            price = self._find_item_price(wholesale_section, cbsl_name)
+            price = self._find_wholesale_price(all_text, cbsl_name)
             if price:
                 prices[basket_name] = price
 
-        rice_prices = self._extract_rice_prices(text)
+        # Extract rice prices
+        rice_prices = self._extract_rice_prices(all_text)
         prices.update(rice_prices)
 
         return prices
 
-    def _extract_wholesale_section(self, text):
-        match = re.search(r'Wholesale Prices(.*?)Retail Prices', text, re.DOTALL)
-        if match:
-            return match.group(1)
-        match = re.search(r'Wholesale Prices(.*)', text, re.DOTALL)
-        return match.group(1) if match else text
-
-    def _find_item_price(self, section, item_name):
-        lines = section.split('\n')
-        for i, line in enumerate(lines):
+    def _find_wholesale_price(self, text, item_name):
+        """
+        Find the first 'Today' price for an item in the wholesale section.
+        Format: ItemName Rs./Unit Yesterday Today Yesterday Today ...
+        We take the first 'Today' value (second numeric value).
+        """
+        lines = text.split('\n')
+        for line in lines:
             if item_name in line:
-                for j in range(i + 1, min(i + 10, len(lines))):
-                    val = self._parse_price_value(lines[j])
-                    if val and val > 0:
-                        return val
-        return None
-
-    def _parse_price_value(self, text):
-        match = re.search(r'([\d,]+\.\d{2})', text.strip())
-        if match:
-            try:
-                return Decimal(match.group(1).replace(',', ''))
-            except Exception:
-                pass
+                # Extract all numeric values from the line
+                values = re.findall(r'[\d,]+\.\d{2}', line)
+                if len(values) >= 2:
+                    # The pattern is: Yesterday1 Today1 Yesterday2 Today2 ...
+                    # Index 1 is the first "Today" price
+                    try:
+                        price = Decimal(values[1].replace(',', ''))
+                        if price > 0:
+                            return price
+                    except Exception:
+                        pass
         return None
 
     def _extract_rice_prices(self, text):
+        """Extract Samba and Nadu rice prices from retail section."""
         prices = {}
-        # Look for rice price table in retail section
-        retail_match = re.search(r'Retail Prices(.*?)(?:FISH|Fish)', text, re.DOTALL)
-        if not retail_match:
-            return prices
 
-        retail_section = retail_match.group(1)
-        lines = retail_section.split('\n')
+        # Look for rice price lines in retail section
+        # Format: Samba Rs./kg 245.00 245.00 242.00 ...
+        samba_match = re.search(r'Samba\s+Rs\.\/kg\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})', text)
+        if samba_match:
+            try:
+                price = Decimal(samba_match.group(2).replace(',', ''))
+                if price > 100:
+                    prices['Rice — Samba'] = price
+            except Exception:
+                pass
 
-        # Find header line with rice varieties
-        for i, line in enumerate(lines):
-            if 'Samba' in line and 'Nadu' in line:
-                # Look for the first data row after header
-                for j in range(i + 1, min(i + 20, len(lines))):
-                    vals = re.findall(r'[\d\.]+', lines[j])
-                    if len(vals) >= 2:
-                        # Try to match Samba and Nadu
-                        # The table typically has: Samba | Nadu | Kekulu(White) | Kekulu(Red) | Ponni
-                        if len(vals) >= 2:
-                            try:
-                                samba = Decimal(vals[0])
-                                nadu = Decimal(vals[1])
-                                if samba > 100 and nadu > 100:
-                                    prices['Rice — Samba'] = samba
-                                    prices['Rice — Nadu (white, raw)'] = nadu
-                                    break
-                            except Exception:
-                                pass
-                break
+        nadu_match = re.search(r'Nadu\s+Rs\.\/kg\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})', text)
+        if nadu_match:
+            try:
+                price = Decimal(nadu_match.group(2).replace(',', ''))
+                if price > 100:
+                    prices['Rice — Nadu (white, raw)'] = price
+            except Exception:
+                pass
 
         return prices
 
