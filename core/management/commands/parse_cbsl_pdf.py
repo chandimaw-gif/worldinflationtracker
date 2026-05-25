@@ -70,17 +70,12 @@ class Command(BaseCommand):
         return os.path.join(full_dir, pdfs[0])
 
     def _extract_prices(self, pdf_path):
-        import subprocess
         try:
-            result = subprocess.run(
-                ['pdftotext', pdf_path, '-'],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            text = result.stdout
+            from pypdf import PdfReader
+            reader = PdfReader(pdf_path)
+            text = "\n".join(page.extract_text() or "" for page in reader.pages)
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f"pdftotext failed: {e}"))
+            self.stdout.write(self.style.ERROR(f"PDF parsing failed: {e}"))
             return {}
 
         prices = {}
