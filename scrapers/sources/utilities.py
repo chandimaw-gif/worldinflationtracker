@@ -115,8 +115,9 @@ class LitroGasScraper(BaseScraper):
         item = BasketItem.objects.filter(
             country__code=self.COUNTRY_CODE,
             name__icontains='Litro',
-            name__icontains='12.5kg',
             is_active=True,
+        ).filter(
+            name__icontains='12.5kg',
         ).first()
 
         if not item:
@@ -193,8 +194,9 @@ class LaugfsGasScraper(BaseScraper):
         item = BasketItem.objects.filter(
             country__code=self.COUNTRY_CODE,
             name__icontains='Laugfs',
-            name__icontains='12.5kg',
             is_active=True,
+        ).filter(
+            name__icontains='12.5kg',
         ).first()
 
         if not item:
@@ -272,15 +274,17 @@ class DialogScraper(BaseScraper):
         voice_item = BasketItem.objects.filter(
             country__code=self.COUNTRY_CODE,
             name__icontains='Dialog',
-            name__icontains='voice',
             is_active=True,
+        ).filter(
+            name__icontains='voice',
         ).first()
 
         data_item = BasketItem.objects.filter(
             country__code=self.COUNTRY_CODE,
             name__icontains='Dialog',
-            name__icontains='data',
             is_active=True,
+        ).filter(
+            name__icontains='data',
         ).first()
 
         if voice_item:
@@ -399,8 +403,9 @@ class SLTScraper(BaseScraper):
         item = BasketItem.objects.filter(
             country__code=self.COUNTRY_CODE,
             name__icontains='SLT',
-            name__icontains='Fibre',
             is_active=True,
+        ).filter(
+            name__icontains='Fibre',
         ).first()
 
         if not item:
