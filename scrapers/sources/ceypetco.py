@@ -114,73 +114,10 @@ class CEYPETCOScraper(BaseScraper):
     def _extract_latest_prices(self, soup: BeautifulSoup) -> dict:
         """
         Extract the most recent row from the fuel prices table.
-        Tries BeautifulSoup first, falls back to regex on raw HTML.
+        Uses regex on raw HTML (most reliable for CEYPETCO's encoding).
         Returns a dict mapping column header -> price.
         """
-        best_result = {}
-
-        tables = soup.find_all('table')
-        for table in tables:
-            # Find header row
-            header_row = table.find('thead')
-            if header_row:
-                headers = [th.get_text(strip=True) for th in header_row.find_all(['th', 'td'])]
-            else:
-                # Try first tr with th cells
-                headers = []
-                for tr in table.find_all('tr'):
-                    th_cells = tr.find_all('th')
-                    if th_cells:
-                        headers = [th.get_text(strip=True) for th in th_cells]
-                        break
-
-            if not headers:
-                continue
-
-            header_text = ' '.join(headers).upper()
-            # Skip lubricant / non-fuel tables
-            if 'CIRCULAR' in header_text or 'DRUM' in header_text:
-                continue
-            # Must have fuel-related headers
-            if not any(x in header_text for x in ['LP 92', 'LP 95', 'LAD', 'PETROL', 'DIESEL', 'FUEL']):
-                continue
-
-            # Find the first data row (most recent)
-            tbody = table.find('tbody')
-            rows = tbody.find_all('tr') if tbody else table.find_all('tr')
-            data_rows = [r for r in rows if r.find('td')]
-
-            if not data_rows:
-                continue
-
-            result = {}
-            latest_row = data_rows[0]
-            cells = latest_row.find_all('td')
-
-            for i, cell in enumerate(cells):
-                if i >= len(headers):
-                    break
-                header = headers[i]
-                text = cell.get_text(strip=True)
-
-                # First column is usually the effective date
-                if i == 0:
-                    result['_effective_date'] = text
-                    continue
-
-                price = self.parse_price(text)
-                if price and price > 0:
-                    result[header] = price
-
-            # Keep the table with the most fuel price columns
-            if len(result) > len(best_result):
-                best_result = result
-
-        # Fallback: if BeautifulSoup failed, try regex on raw HTML
-        if not best_result:
-            best_result = self._extract_via_regex()
-
-        return best_result
+        return self._extract_via_regex()
 
     def _extract_via_regex(self) -> dict:
         """
