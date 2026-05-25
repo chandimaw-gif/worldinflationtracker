@@ -17,6 +17,15 @@ DEBUG = env('DEBUG', default=False)
 
 ALLOWED_HOSTS = env('ALLOWED_HOSTS', default=['worldinflationtracker.com', 'www.worldinflationtracker.com', 'localhost', '127.0.0.1'])
 
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
+    'https://worldinflationtracker.com',
+    'https://www.worldinflationtracker.com',
+    'https://phpstack-1559249-6432512.cloudwaysapps.com',
+])
+
+USE_X_FORWARDED_HOST = env.bool('USE_X_FORWARDED_HOST', default=True)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -89,6 +98,46 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Colombo'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Celery Beat Schedule (can also be configured via Django admin)
+CELERY_BEAT_SCHEDULE = {
+    'scrape-food-prices-daily': {
+        'task': 'scrapers.tasks.scrape_food_prices',
+        'schedule': 'crontab(hour=6, minute=0)',
+    },
+    'check-fuel-prices-daily': {
+        'task': 'scrapers.tasks.check_fuel_prices',
+        'schedule': 'crontab(hour=5, minute=0)',
+    },
+    'check-gas-prices-daily': {
+        'task': 'scrapers.tasks.check_gas_prices',
+        'schedule': 'crontab(hour=5, minute=30)',
+    },
+    'scrape-exchange-rates-daily': {
+        'task': 'scrapers.tasks.scrape_exchange_rates',
+        'schedule': 'crontab(hour=4, minute=0)',
+    },
+    'scrape-gold-price-daily': {
+        'task': 'scrapers.tasks.scrape_gold_price',
+        'schedule': 'crontab(hour=4, minute=30)',
+    },
+    'scrape-electronics-weekly': {
+        'task': 'scrapers.tasks.scrape_electronics_prices',
+        'schedule': 'crontab(day_of_week=1, hour=7, minute=0)',
+    },
+    'scrape-telecom-weekly': {
+        'task': 'scrapers.tasks.scrape_telecom_prices',
+        'schedule': 'crontab(day_of_week=1, hour=7, minute=30)',
+    },
+    'scrape-utilities-monthly': {
+        'task': 'scrapers.tasks.scrape_utility_prices',
+        'schedule': 'crontab(day_of_month=1, hour=8, minute=0)',
+    },
+    'fetch-news-feeds': {
+        'task': 'scrapers.tasks.fetch_news_feeds',
+        'schedule': 1800.0,  # every 30 minutes
+    },
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
