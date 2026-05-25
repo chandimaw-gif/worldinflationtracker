@@ -105,7 +105,12 @@ class BaseScraper:
     def fetch_soup(self, url: str, **kwargs) -> BeautifulSoup:
         """Fetch and parse HTML with BeautifulSoup."""
         resp = self.fetch(url, **kwargs)
-        return BeautifulSoup(resp.content, 'html.parser')
+        # Force UTF-8 encoding; if that fails, use raw bytes
+        try:
+            resp.encoding = 'utf-8'
+            return BeautifulSoup(resp.text, 'html.parser')
+        except Exception:
+            return BeautifulSoup(resp.content, 'html.parser')
 
     def start_scrape_log(self, job_name: str):
         """Create a ScrapeLog entry for this run."""

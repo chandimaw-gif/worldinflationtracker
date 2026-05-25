@@ -18,6 +18,18 @@ from bs4 import BeautifulSoup
 from scrapers.base import BaseScraper
 
 
+# Regex patterns for CEYPETCO fuel price extraction
+# Matches: <tr><td>03.05.2026</td><td>470</td><td>410</td>...
+CEYPETCO_ROW_RE = re.compile(
+    r'<tr>\s*<td>(\d{2}\.\d{2}\.\d{4})</td>'
+    r'((?:\s*<td>([\d.]+)</td>)*)'
+    r'\s*</tr>',
+    re.IGNORECASE
+)
+CEYPETCO_CELL_RE = re.compile(r'<td>([\d.]+)</td>', re.IGNORECASE)
+CEYPETCO_HEADER_RE = re.compile(r'<th>([^<]+)</th>', re.IGNORECASE)
+
+
 class CEYPETCOScraper(BaseScraper):
     """
     Scrape latest fuel prices from CEYPETCO historical prices page.
@@ -102,6 +114,7 @@ class CEYPETCOScraper(BaseScraper):
     def _extract_latest_prices(self, soup: BeautifulSoup) -> dict:
         """
         Extract the most recent row from the fuel prices table.
+        Tries BeautifulSoup first, falls back to regex on raw HTML.
         Returns a dict mapping column header -> price.
         """
         best_result = {}
@@ -163,4 +176,68 @@ class CEYPETCOScraper(BaseScraper):
             if len(result) > len(best_result):
                 best_result = result
 
+        # Fallback: if BeautifulSoup failed, try regex on raw HTML
+        if not best_result:
+            best_result = self._extract_via_regex()
+
         return best_result
+
+    def _extract_via_regex(self) -> dict:
+        """
+        Fallback regex-based extraction from raw HTML.
+        CEYPETCO's page sometimes has encoding issues that break BS4.
+        """
+        try:
+            resp = self.session.get(
+                'https://ceypetco.gov.lk/historical-prices/',
+                timeout=self.DEFAULT_TIMEOUT,
+            )
+            resp.raise_for_status()
+            html = resp.text
+        except Exception as e:
+            self.log_error(f"Regex fallback fetch failed: {e}")
+            return {}
+
+        # Find all header rows
+        all_headers = []
+        for table_match in re.finditer(r'<table[^>]*>(.*?)</table>', html, re.DOTALL | re.IGNORECASE):
+            table_html = table_match.group(1)
+            headers = CEYPETCO_HEADER_RE.findall(table_html)
+            if headers:
+                all_headers.append((table_html, headers))
+
+        # Pick the table with fuel-related headers
+        best_table = None
+        best_headers = None
+        for table_html, headers in all_headers:
+            header_text = ' '.join(headers).upper()
+            if 'CIRCULAR' in header_text or 'DRUM' in header_text:
+                continue
+            if any(x in header_text for x in ['LP 92', 'LP 95', 'LAD']):
+                best_table = table_html
+                best_headers = headers
+                break
+
+        if not best_table or not best_headers:
+            return {}
+
+        # Find the first data row in this table
+        rows = CEYPETCO_ROW_RE.findall(best_table)
+        if not rows:
+            return {}
+
+        # rows[0] = (date_string, td_block, ...)
+        date_str = rows[0][0]
+        td_block = rows[0][1]
+        cell_values = CEYPETCO_CELL_RE.findall(td_block)
+
+        result = {'_effective_date': date_str}
+        for i, val in enumerate(cell_values):
+            if i + 1 >= len(best_headers):
+                break
+            header = best_headers[i + 1]  # skip Date column
+            price = self.parse_price(val)
+            if price and price > 0:
+                result[header] = price
+
+        return result
