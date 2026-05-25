@@ -29,9 +29,9 @@ class CEYPETCOScraper(BaseScraper):
 
     # Mapping of basket item name fragments to table column text fragments
     FUEL_MAP = {
-        'Petrol — Octane 92': ['92', 'OCTANE 92', 'PETROL 92'],
-        'Petrol — Octane 95': ['95', 'OCTANE 95', 'PETROL 95', 'XTRA MILE 95'],
-        'Auto Diesel': ['DIESEL', 'AUTO DIESEL', 'LAD'],
+        'Petrol — Octane 92': ['LP 92', '92'],
+        'Petrol — Octane 95': ['LP 95', '95'],
+        'Auto Diesel': ['LAD', 'AUTO DIESEL', 'DIESEL'],
     }
 
     def scrape(self):
@@ -46,8 +46,8 @@ class CEYPETCOScraper(BaseScraper):
             self.items_failed += 3  # One per fuel type
             return
 
-        # The page usually has a table with columns:
-        # Effective Date | Lanka Petrol 92 Octane | Lanka Petrol 95 Octane | Lanka Auto Diesel | ...
+        # The page has a table with columns:
+        # Date | LP 95 | LP 92 | LAD | LSD | LK | LIK | FUR. 800 | FUR 1500 (High) | FUR. 1500 (Low)
         latest_prices = self._extract_latest_prices(soup)
 
         if not latest_prices:
@@ -70,11 +70,15 @@ class CEYPETCOScraper(BaseScraper):
 
             # Find matching price
             price = None
+            matched_col = None
             for col_key, col_price in latest_prices.items():
+                if col_key.startswith('_'):
+                    continue
                 col_upper = col_key.upper()
                 for frag in column_frags:
                     if frag.upper() in col_upper:
                         price = col_price
+                        matched_col = col_key
                         break
                 if price:
                     break
@@ -87,7 +91,7 @@ class CEYPETCOScraper(BaseScraper):
                     source_url='https://ceypetco.gov.lk/historical-prices/',
                     source_name='CEYPETCO',
                     raw_data={
-                        'column_matched': col_key,
+                        'column_matched': matched_col,
                         'effective_date': latest_prices.get('_effective_date', str(today)),
                     },
                 )
@@ -106,17 +110,19 @@ class CEYPETCOScraper(BaseScraper):
         for table in tables:
             # Find header row
             header_row = table.find('thead')
-            if not header_row:
+            if header_row:
+                headers = [th.get_text(strip=True) for th in header_row.find_all(['th', 'td'])]
+            else:
                 # Try first tr with th cells
+                headers = []
                 for tr in table.find_all('tr'):
-                    if tr.find('th'):
-                        header_row = tr
+                    th_cells = tr.find_all('th')
+                    if th_cells:
+                        headers = [th.get_text(strip=True) for th in th_cells]
                         break
 
-            if not header_row:
+            if not headers:
                 continue
-
-            headers = [th.get_text(strip=True) for th in header_row.find_all(['th', 'td'])]
 
             # Find the first data row (most recent)
             tbody = table.find('tbody')
@@ -128,10 +134,6 @@ class CEYPETCOScraper(BaseScraper):
 
             latest_row = data_rows[0]
             cells = latest_row.find_all('td')
-
-            if len(cells) != len(headers):
-                # Sometimes there are colspan/rowspan issues; try anyway
-                pass
 
             for i, cell in enumerate(cells):
                 if i >= len(headers):
@@ -148,7 +150,8 @@ class CEYPETCOScraper(BaseScraper):
                 if price and price > 0:
                     result[header] = price
 
-            if result:
+            # If we found a valid table with Date + fuel prices, break
+            if result and len(result) > 1:
                 break
 
         return result
