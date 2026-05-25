@@ -105,8 +105,9 @@ class CBSLGoldScraper(BaseScraper):
             item = BasketItem.objects.filter(
                 country__code=self.COUNTRY_CODE,
                 name__icontains='gold',
-                name__icontains='22',
                 is_active=True,
+            ).filter(
+                name__icontains='22',
             ).first()
 
             if item:
