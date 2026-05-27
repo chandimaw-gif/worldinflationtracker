@@ -235,13 +235,13 @@ class DetailedAnalysisView(TemplateView):
                 country=country, is_active=True
             ).select_related('group').order_by('name')
 
-            # Chart data for selected items (default: show first 5)
+            # Chart data for selected items (default: show all)
             selected_items = self.request.GET.getlist('items')
             context['selected_item_ids'] = [int(i) for i in selected_items if i.isdigit()]
             if selected_items:
-                items = BasketItem.objects.filter(id__in=selected_items, country=country)
+                items = BasketItem.objects.filter(id__in=selected_items, country=country).select_related('group').order_by('group__coicop_code', 'name')
             else:
-                items = BasketItem.objects.filter(country=country, is_active=True)[:5]
+                items = BasketItem.objects.filter(country=country, is_active=True).select_related('group').order_by('group__coicop_code', 'name')
 
             item_chart_data = self._build_item_chart_data(items, country)
             context['item_chart_data_json'] = json.dumps(item_chart_data)
@@ -264,7 +264,8 @@ class DetailedAnalysisView(TemplateView):
 
         datasets = []
         colors = ['#2563eb', '#dc2626', '#16a34a', '#ca8a04', '#9333ea',
-                  '#0891b2', '#be123c', '#059669']
+                  '#0891b2', '#be123c', '#059669', '#d97706', '#7c3aed',
+                  '#db2777', '#4f46e5', '#0d9488', '#b91c1c', '#65a30d']
 
         for i, item in enumerate(items):
             data = []

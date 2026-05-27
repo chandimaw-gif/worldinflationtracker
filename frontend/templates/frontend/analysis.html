@@ -5,33 +5,40 @@
 {% block content %}
 <div class="container content-page">
     <h1>Detailed Analysis</h1>
-    <p class="subtitle">Compare categories, items, and metrics over any time period.</p>
+    <p class="subtitle">Compare item prices over time. Tick items to add them to the chart.</p>
 
     <div class="comparison-form">
-        <form method="get" class="form-row">
-            <label>Country:
-                <select name="country" onchange="this.form.submit()">
-                    {% for c in countries %}
-                    <option value="{{ c.code }}" {% if current_country and c.code == current_country.code %}selected{% endif %}>{{ c.name }}</option>
-                    {% endfor %}
-                </select>
-            </label>
+        <form method="get" id="analysis-form">
+            <div class="form-row">
+                <label>Country:
+                    <select name="country" onchange="document.getElementById('analysis-form').submit()">
+                        {% for c in countries %}
+                        <option value="{{ c.code }}" {% if current_country and c.code == current_country.code %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
 
-            <label>Items to Compare:
-                <select name="items" multiple size="4">
-                    {% for item in basket_items %}
-                    <option value="{{ item.id }}" {% if item.id in selected_item_ids %}selected{% endif %}>
+            <div class="checkbox-grid">
+                {% for group in product_groups %}
+                <div class="checkbox-group">
+                    <h4>{{ group.name }}</h4>
+                    {% for item in group.items.all %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="items" value="{{ item.id }}"
+                            {% if item.id in selected_item_ids %}checked{% endif %}
+                            onchange="document.getElementById('analysis-form').submit()">
                         {{ item.name }}
-                    </option>
+                    </label>
                     {% endfor %}
-                </select>
-            </label>
+                </div>
+                {% endfor %}
+            </div>
 
-            <button type="submit" class="btn">Update Chart</button>
+            <div style="margin-top:0.75rem;">
+                <a href="?country={{ current_country.code|default:'LKA' }}" class="btn secondary">Reset Selection</a>
+            </div>
         </form>
-        <p style="font-size:0.8125rem;color:var(--color-text-muted);margin:0.5rem 0 0;">
-            Hold Ctrl/Cmd to select multiple items. Defaults to first 5 items if none selected.
-        </p>
     </div>
 
     <div class="chart-container large">
@@ -84,7 +91,15 @@ new Chart(ctx, {
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-            legend: { display: true },
+            legend: {
+                display: true,
+                position: 'bottom',
+                labels: {
+                    boxWidth: 12,
+                    padding: 10,
+                    font: { size: 11 }
+                }
+            },
             title: { display: true, text: 'Price Trends (LKR)' }
         },
         scales: {
