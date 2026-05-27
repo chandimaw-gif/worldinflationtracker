@@ -175,8 +175,9 @@ class ExchangeRateView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         country_code = self.kwargs.get('country', 'LKA')
+        today = date.today()
 
-        # All exchange rates for historical chart (up to 3 years)
+        # All exchange rates for historical chart (up to ~3 years)
         rates_qs = ExchangeRate.objects.filter(
             country__code=country_code
         ).order_by('-rate_date')[:730]
@@ -194,20 +195,37 @@ class ExchangeRateView(TemplateView):
             'data': chart_data,
         })
 
-        # Stats
-        if rates_qs:
-            rates_list = [float(r.rate) for r in rates_qs]
-            context['high_rate'] = max(rates_list)
-            context['low_rate'] = min(rates_list)
-            one_year_ago = date.today() - timedelta(days=365)
-            old_rate = ExchangeRate.objects.filter(
-                country__code=country_code,
-                rate_date__lte=one_year_ago
-            ).order_by('-rate_date').first()
-            if old_rate and context['latest_rate']:
-                context['yoy_change'] = ((float(context['latest_rate'].rate) - float(old_rate.rate)) / float(old_rate.rate)) * 100
+        # 90-day stats (high / low / YoY) — computed from actual 90-day window
+        ninety_days_ago = today - timedelta(days=90)
+        rates_90d = ExchangeRate.objects.filter(
+            country__code=country_code,
+            rate_date__gte=ninety_days_ago
+        ).order_by('-rate_date')
+        if rates_90d:
+            rates_90d_list = [float(r.rate) for r in rates_90d]
+            context['high_rate'] = max(rates_90d_list)
+            context['low_rate'] = min(rates_90d_list)
+        else:
+            # Fallback to all-time high/low if no 90-day data
+            all_rates = ExchangeRate.objects.filter(country__code=country_code)
+            if all_rates:
+                all_list = [float(r.rate) for r in all_rates]
+                context['high_rate'] = max(all_list)
+                context['low_rate'] = min(all_list)
             else:
-                context['yoy_change'] = None
+                context['high_rate'] = None
+                context['low_rate'] = None
+
+        # YoY change
+        one_year_ago = today - timedelta(days=365)
+        old_rate = ExchangeRate.objects.filter(
+            country__code=country_code,
+            rate_date__lte=one_year_ago
+        ).order_by('-rate_date').first()
+        if old_rate and context['latest_rate']:
+            context['yoy_change'] = ((float(context['latest_rate'].rate) - float(old_rate.rate)) / float(old_rate.rate)) * 100
+        else:
+            context['yoy_change'] = None
 
         # Bank exchange rate comparison
         today = date.today()
