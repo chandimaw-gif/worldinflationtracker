@@ -140,7 +140,7 @@ class Command(BaseCommand):
                     ExchangeRate.objects.filter(
                         country=country,
                         base_currency="USD",
-                        target_currency="LKR",
+                        local_currency="LKR",
                         rate_date=fetch_date,
                     ).update(
                         rate=rate_value,
@@ -152,7 +152,7 @@ class Command(BaseCommand):
                     ExchangeRate.objects.create(
                         country=country,
                         base_currency="USD",
-                        target_currency="LKR",
+                        local_currency="LKR",
                         rate=rate_value,
                         rate_date=fetch_date,
                         source="x-rates.com",
