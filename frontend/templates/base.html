@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    {% if adsense.enabled %}
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-{{ adsense.publisher_id }}" crossorigin="anonymous"></script>
+    {% endif %}
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -30,7 +33,18 @@
         </div>
     </header>
 
-    {% if ads.header_banner %}
+    {# Google AdSense — Header Banner (Leaderboard) #}
+    {% if adsense.enabled %}
+    <div class="ad-container ad-header">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-{{ adsense.publisher_id }}"
+             data-ad-slot="HEADER_SLOT_ID"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+    {% elif ads.header_banner %}
     <div class="ad-container ad-header" data-slot="header_banner">
         {% if ads.header_banner.ad_type == 'manual' %}
             <a href="{{ ads.header_banner.manual_link_url }}" target="_blank" rel="noopener sponsored">
@@ -46,7 +60,18 @@
         {% block content %}{% endblock %}
     </main>
 
-    {% if ads.footer_banner %}
+    {# Google AdSense — Footer Banner #}
+    {% if adsense.enabled %}
+    <div class="ad-container ad-footer">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-{{ adsense.publisher_id }}"
+             data-ad-slot="FOOTER_SLOT_ID"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+    {% elif ads.footer_banner %}
     <div class="ad-container ad-footer" data-slot="footer_banner">
         {% if ads.footer_banner.ad_type == 'manual' %}
             <a href="{{ ads.footer_banner.manual_link_url }}" target="_blank" rel="noopener sponsored">

@@ -1,3 +1,4 @@
+from django.conf import settings
 from core.models import Country, AdPlacement
 
 
@@ -10,4 +11,10 @@ def site_context(request):
     for ad in AdPlacement.objects.filter(is_active=True):
         ads[ad.slot_name] = ad
     context['ads'] = ads
+
+    # Google AdSense config
+    context['adsense'] = {
+        'enabled': getattr(settings, 'GOOGLE_ADSENSE_ENABLED', False),
+        'publisher_id': getattr(settings, 'GOOGLE_ADSENSE_PUBLISHER_ID', 'pub-XXXXXXXXXXXXXXXX'),
+    }
     return context

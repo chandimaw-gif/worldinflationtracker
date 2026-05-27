@@ -79,7 +79,18 @@
         </div>
         {% endif %}
 
-        {% if ads.mid_content_1 %}
+        {% if adsense.enabled %}
+        <div class="ad-container ad-in-content">
+            <div class="ad-label">Advertisement</div>
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-{{ adsense.publisher_id }}"
+                 data-ad-slot="INCONTENT_SLOT_ID"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        </div>
+        {% elif ads.mid_content_1 %}
         <div class="ad-container ad-mid" data-slot="mid_content_1">
             {% if ads.mid_content_1.ad_type == 'manual' %}
                 <a href="{{ ads.mid_content_1.manual_link_url }}" target="_blank" rel="noopener sponsored">

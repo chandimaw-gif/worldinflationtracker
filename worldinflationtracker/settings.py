@@ -183,6 +183,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
 ]
 
+# Google AdSense configuration
+# Replace with your actual publisher ID after AdSense approval
+GOOGLE_ADSENSE_PUBLISHER_ID = env('GOOGLE_ADSENSE_PUBLISHER_ID', default='pub-XXXXXXXXXXXXXXXX')
+GOOGLE_ADSENSE_ENABLED = env.bool('GOOGLE_ADSENSE_ENABLED', default=False)
+
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/admin/'
 

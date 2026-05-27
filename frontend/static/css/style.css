@@ -567,3 +567,42 @@ table .numeric {
     .chart-container.large { height: 320px; }
     th, td { padding: 0.5rem; font-size: 0.8125rem; }
 }
+/* Ad Containers */
+.ad-container {
+    text-align: center;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.ad-header {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.5rem 0;
+    min-height: 90px;
+}
+
+.ad-footer {
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding: 1rem 0;
+    min-height: 90px;
+}
+
+.ad-sidebar {
+    margin: 1.5rem 0;
+    min-height: 250px;
+}
+
+.ad-in-content {
+    margin: 1.5rem auto;
+    max-width: 728px;
+    min-height: 90px;
+}
+
+.ad-label {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
