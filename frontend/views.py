@@ -175,17 +175,19 @@ class ExchangeRateView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         country_code = self.kwargs.get('country', 'LKA')
+
+        # All exchange rates for historical chart (up to 3 years)
         rates_qs = ExchangeRate.objects.filter(
             country__code=country_code
-        ).order_by('-rate_date')[:90]
+        ).order_by('-rate_date')[:730]
         context['rates'] = rates_qs
         context['latest_rate'] = rates_qs.first()
 
-        # Chart data
+        # Chart data (reversed for chronological order)
         chart_labels = []
         chart_data = []
         for r in reversed(list(rates_qs)):
-            chart_labels.append(r.rate_date.strftime('%b %d'))
+            chart_labels.append(r.rate_date.strftime('%b %Y'))
             chart_data.append(float(r.rate))
         context['exchange_chart_json'] = json.dumps({
             'labels': chart_labels,
@@ -197,8 +199,6 @@ class ExchangeRateView(TemplateView):
             rates_list = [float(r.rate) for r in rates_qs]
             context['high_rate'] = max(rates_list)
             context['low_rate'] = min(rates_list)
-            # YoY: compare latest with rate from ~1 year ago
-            from datetime import timedelta
             one_year_ago = date.today() - timedelta(days=365)
             old_rate = ExchangeRate.objects.filter(
                 country__code=country_code,
@@ -208,7 +208,59 @@ class ExchangeRateView(TemplateView):
                 context['yoy_change'] = ((float(context['latest_rate'].rate) - float(old_rate.rate)) / float(old_rate.rate)) * 100
             else:
                 context['yoy_change'] = None
+
+        # Bank exchange rate comparison
+        today = date.today()
+        context['bank_rates'] = self._get_bank_comparison(country_code, today)
+
+        # Market rates (interest rates)
+        context['market_rates'] = self._get_market_rates(country_code, today)
+
         return context
+
+    def _get_bank_comparison(self, country_code, today):
+        from core.models import BankExchangeRate
+        # Get latest rates for each bank-currency combo
+        currencies = ['USD', 'GBP', 'EUR']
+        banks = ['Seylan Bank', 'Commercial Bank', 'Sampath Bank']
+        comparison = []
+        for curr in currencies:
+            row = {'currency': curr, 'banks': []}
+            for bank in banks:
+                rate = BankExchangeRate.objects.filter(
+                    country__code=country_code,
+                    bank_name=bank,
+                    currency=curr,
+                    rate_date__lte=today
+                ).order_by('-rate_date').first()
+                row['banks'].append({
+                    'name': bank,
+                    'buying': float(rate.buying_rate) if rate and rate.buying_rate else None,
+                    'selling': float(rate.selling_rate) if rate and rate.selling_rate else None,
+                })
+            comparison.append(row)
+        return comparison
+
+    def _get_market_rates(self, country_code, today):
+        from core.models import MarketRate
+        rates = {}
+        for rate_type, label in [
+            ('awplr', 'AWPLR'),
+            ('tbill_91', '91-Day T-Bill'),
+            ('tbill_182', '182-Day T-Bill'),
+            ('tbill_364', '364-Day T-Bill'),
+            ('sdfr', 'SDFR'),
+            ('slfr', 'SLFR'),
+            ('opr', 'OPR'),
+        ]:
+            latest = MarketRate.objects.filter(
+                country__code=country_code,
+                rate_type=rate_type,
+                rate_date__lte=today
+            ).order_by('-rate_date').first()
+            if latest:
+                rates[label] = float(latest.rate)
+        return rates
 
 
 class DetailedAnalysisView(TemplateView):

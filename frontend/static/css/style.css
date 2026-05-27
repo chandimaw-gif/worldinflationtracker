@@ -517,6 +517,34 @@ th {
     margin: 0 auto;
 }
 
+/* Bank comparison table */
+table .numeric {
+    text-align: right;
+    font-family: 'Inter', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Market rate cards */
+.stats-grid.mini {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.stats-grid.mini .stat-card {
+    padding: 0.75rem;
+}
+
+.stats-grid.mini .stat-value {
+    font-size: 1.25rem;
+}
+
+.stats-grid.mini h4 {
+    font-size: 0.75rem;
+    margin: 0 0 0.25rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
     .main-nav {

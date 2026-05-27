@@ -1,34 +1,34 @@
 {% extends 'base.html' %}
 
-{% block title %}Exchange Rates | World Inflation Tracker{% endblock %}
+{% block title %}Exchange Rates & Market Data | World Inflation Tracker{% endblock %}
 
 {% block content %}
 <div class="container content-page">
-    <h1>Exchange Rates</h1>
-    <p class="subtitle">USD/LKR and other major currency pairs.</p>
+    <h1>Exchange Rates & Market Data</h1>
+    <p class="subtitle">USD/LKR trends, bank comparisons, and interest rates.</p>
 
     <div class="stats-grid mini">
         <div class="stat-card">
             <h4>Current USD/LKR</h4>
-            <div class="stat-value" id="current-rate">
+            <div class="stat-value">
                 {% if latest_rate %}{{ latest_rate.rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
         </div>
         <div class="stat-card">
             <h4>90-Day High</h4>
-            <div class="stat-value" id="high-rate">
+            <div class="stat-value">
                 {% if high_rate %}{{ high_rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
         </div>
         <div class="stat-card">
             <h4>90-Day Low</h4>
-            <div class="stat-value" id="low-rate">
+            <div class="stat-value">
                 {% if low_rate %}{{ low_rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
         </div>
         <div class="stat-card">
             <h4>YoY Change</h4>
-            <div class="stat-value" id="yoy-rate">
+            <div class="stat-value">
                 {% if yoy_change != None %}
                     <span class="{% if yoy_change > 0 %}positive{% elif yoy_change < 0 %}negative{% else %}neutral{% endif %}">
                         {{ yoy_change|floatformat:2 }}%
@@ -38,11 +38,55 @@
         </div>
     </div>
 
+    {% if market_rates %}
+    <div class="stats-grid mini" style="margin-top:1rem;">
+        {% for label, value in market_rates.items %}
+        <div class="stat-card">
+            <h4>{{ label }}</h4>
+            <div class="stat-value">{{ value|floatformat:2 }}%</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="chart-section">
-        <div class="chart-container">
+        <div class="chart-container large">
             <canvas id="exchange-chart"></canvas>
         </div>
     </div>
+
+    {% if bank_rates %}
+    <h2 style="margin-top:2rem;font-size:1.125rem;">Bank Exchange Rate Comparison (Today)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Currency</th>
+                {% for bank in bank_rates.0.banks %}
+                <th colspan="2">{{ bank.name }}</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                <th></th>
+                {% for bank in bank_rates.0.banks %}
+                <th>Buying</th>
+                <th>Selling</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in bank_rates %}
+            <tr>
+                <td><strong>{{ row.currency }}</strong></td>
+                {% for bank in row.banks %}
+                <td class="numeric">{% if bank.buying %}{{ bank.buying|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td class="numeric">{% if bank.selling %}{{ bank.selling|floatformat:2 }}{% else %}—{% endif %}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p style="font-size:0.8125rem;color:var(--color-text-muted);">Rates are indicative. Please confirm with your bank before transactions.</p>
+    {% endif %}
 
     <div class="table-wrapper">
         <h3>Recent Rates</h3>
@@ -55,7 +99,7 @@
                 <tr>
                     <td>{{ r.rate_date }}</td>
                     <td class="numeric">{{ r.rate|floatformat:4 }}</td>
-                    <td>{{ r.source|default:"open.er-api.com" }}</td>
+                    <td>{{ r.source|default:"CBSL" }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="3" class="no-data">No exchange rate data yet.</td></tr>
@@ -82,15 +126,20 @@ new Chart(ctx, {
             backgroundColor: 'rgba(37, 99, 235, 0.1)',
             fill: true,
             tension: 0.3,
-            pointRadius: 2,
+            pointRadius: 1,
             pointHoverRadius: 5
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { title: { display: true, text: 'USD/LKR Exchange Rate (Last 90 Days)' } },
-        scales: { y: { title: { display: true, text: 'LKR per 1 USD' } } }
+        plugins: {
+            title: { display: true, text: 'USD/LKR Exchange Rate (Historical)' },
+            legend: { display: false }
+        },
+        scales: {
+            y: { title: { display: true, text: 'LKR per 1 USD' } }
+        }
     }
 });
 </script>

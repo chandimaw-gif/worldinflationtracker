@@ -250,3 +250,62 @@ class PriceAuditLog(models.Model):
 
     def __str__(self):
         return f"Audit: {self.item.name} @ {self.price} ({self.observation_date})"
+
+
+class MarketRate(models.Model):
+    """
+    Stores CBSL and other official market rates:
+    - Exchange rates (USD/LKR indicative)
+    - Interest rates (AWPLR, TBill, SDFR, SLFR, OPR)
+    """
+    RATE_TYPE_CHOICES = [
+        ('exchange_rate', 'Exchange Rate'),
+        ('awplr', 'AWPLR — Average Weighted Prime Lending Rate'),
+        ('awfdr', 'AWFDR — Average Weighted Fixed Deposit Rate'),
+        ('tbill_91', 'Treasury Bill — 91 Day'),
+        ('tbill_182', 'Treasury Bill — 182 Day'),
+        ('tbill_364', 'Treasury Bill — 364 Day'),
+        ('sdfr', 'Standing Deposit Facility Rate (SDFR)'),
+        ('slfr', 'Standing Lending Facility Rate (SLFR)'),
+        ('opr', 'Overnight Policy Rate (OPR)'),
+    ]
+
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='market_rates')
+    rate_date = models.DateField()
+    rate_type = models.CharField(max_length=30, choices=RATE_TYPE_CHOICES)
+    currency = models.CharField(max_length=3, blank=True, help_text="For exchange rates")
+    rate = models.DecimalField(max_digits=10, decimal_places=4)
+    source = models.CharField(max_length=200, blank=True, default='CBSL')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Market Rates"
+        unique_together = ['country', 'rate_date', 'rate_type', 'currency']
+        ordering = ['-rate_date', 'rate_type']
+
+    def __str__(self):
+        return f"{self.rate_type} {self.rate_date}: {self.rate}"
+
+
+class BankExchangeRate(models.Model):
+    """
+    Exchange rates published by individual commercial banks.
+    """
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='bank_exchange_rates')
+    bank_name = models.CharField(max_length=200)
+    rate_date = models.DateField()
+    currency = models.CharField(max_length=3)
+    buying_rate = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    selling_rate = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    tt_buying_rate = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, help_text="Telegraphic Transfer buying")
+    tt_selling_rate = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True, help_text="Telegraphic Transfer selling")
+    source_url = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Bank Exchange Rates"
+        unique_together = ['country', 'bank_name', 'rate_date', 'currency']
+        ordering = ['-rate_date', 'bank_name', 'currency']
+
+    def __str__(self):
+        return f"{self.bank_name} {self.currency} @ {self.rate_date}: Buy {self.buying_rate} / Sell {self.selling_rate}"
