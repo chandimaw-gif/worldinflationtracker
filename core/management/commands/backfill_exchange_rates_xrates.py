@@ -71,7 +71,7 @@ class Command(BaseCommand):
         # Check existing
         existing_dates = set(
             ExchangeRate.objects.filter(
-                country=country, base_currency="USD", target_currency="LKR"
+                country=country, base_currency="USD", local_currency="LKR"
             ).values_list("rate_date", flat=True)
         )
 
