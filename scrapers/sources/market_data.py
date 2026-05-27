@@ -39,7 +39,6 @@ class CBSLMarketRateScraper(BaseScraper):
 
         self.items_scraped = sum(results.values())
         self.status = 'success' if self.items_scraped > 0 else 'failed'
-        return self._result()
 
     def _scrape_exchange_rate(self, country):
         """Fetch USD/LKR indicative rate from CBSL API page."""
@@ -196,7 +195,6 @@ class SeylanBankRateScraper(BaseScraper):
 
         self.items_scraped = count
         self.status = 'success' if count > 0 else 'failed'
-        return self._result()
 
 
 class CommercialBankRateScraper(BaseScraper):
@@ -249,7 +247,6 @@ class CommercialBankRateScraper(BaseScraper):
 
         self.items_scraped = count
         self.status = 'success' if count > 0 else 'failed'
-        return self._result()
 
 
 class SampathBankRateScraper(BaseScraper):
@@ -301,4 +298,3 @@ class SampathBankRateScraper(BaseScraper):
 
         self.items_scraped = count
         self.status = 'success' if count > 0 else 'failed'
-        return self._result()
