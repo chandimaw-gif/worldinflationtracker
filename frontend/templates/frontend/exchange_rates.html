@@ -57,27 +57,27 @@
 
     {% if bank_rates %}
     <h2 style="margin-top:2rem;font-size:1.125rem;text-align:center;">Bank Exchange Rate Comparison (Today)</h2>
-    <p style="text-align:center;font-size:0.8125rem;color:var(--color-text-muted);">Rates in LKR per 1 unit of foreign currency</p>
+    <p style="text-align:center;font-size:0.8125rem;color:var(--color-text-muted);">How much LKR you get or pay per 1 unit of foreign currency</p>
     <table class="bank-rates-table">
         <thead>
             <tr>
-                <th>Currency</th>
+                <th style="text-align:center;">Currency</th>
                 {% for bank in bank_rates.0.banks %}
                 <th colspan="2" style="text-align:center;">{{ bank.name }}</th>
                 {% endfor %}
             </tr>
             <tr>
-                <th></th>
+                <th style="text-align:center;"></th>
                 {% for bank in bank_rates.0.banks %}
-                <th style="text-align:center;">Buying</th>
-                <th style="text-align:center;">Selling</th>
+                <th style="text-align:center;">Bank Buys<br><small>(LKR)</small></th>
+                <th style="text-align:center;">Bank Sells<br><small>(LKR)</small></th>
                 {% endfor %}
             </tr>
         </thead>
         <tbody>
             {% for row in bank_rates %}
             <tr>
-                <td style="text-align:center;"><strong>{{ row.currency }}</strong></td>
+                <td style="text-align:center;"><strong>1 {{ row.currency }} =</strong></td>
                 {% for bank in row.banks %}
                 <td style="text-align:center;">{% if bank.buying %}{{ bank.buying|floatformat:2 }}{% else %}—{% endif %}</td>
                 <td style="text-align:center;">{% if bank.selling %}{{ bank.selling|floatformat:2 }}{% else %}—{% endif %}</td>

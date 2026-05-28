@@ -6,20 +6,18 @@ Runs Seylan, Commercial, and Sampath bank scrapers.
 from django.core.management.base import BaseCommand
 
 from scrapers.sources.market_data import (
-    SeylanBankRateScraper,
     CommercialBankRateScraper,
-    SampathBankRateScraper,
+    NDBBankRateScraper,
 )
 
 
 class Command(BaseCommand):
-    help = "Scrape daily exchange rates from Seylan, Commercial, and Sampath banks"
+    help = "Scrape daily exchange rates from Commercial Bank and NDB"
 
     def handle(self, *args, **options):
         scrapers = [
-            SeylanBankRateScraper(),
             CommercialBankRateScraper(),
-            SampathBankRateScraper(),
+            NDBBankRateScraper(),
         ]
 
         for scraper in scrapers:

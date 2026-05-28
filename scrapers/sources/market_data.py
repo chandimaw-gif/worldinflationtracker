@@ -197,6 +197,67 @@ class SeylanBankRateScraper(BaseScraper):
         self.status = 'success' if count > 0 else 'failed'
 
 
+class NDBBankRateScraper(BaseScraper):
+    """Scrape National Development Bank (NDB) exchange rates."""
+    SOURCE_NAME = "NDB Bank"
+    BASE_URL = "https://www.ndbbank.com/rates/exchange-rates"
+
+    def scrape(self):
+        country = Country.objects.get(code='LKA')
+        resp = requests.get(self.BASE_URL, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
+        resp.raise_for_status()
+        html = resp.text
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, 'html.parser')
+
+        count = 0
+        today = date.today()
+        # Map full names to currency codes
+        currency_map = {
+            'US Dollar': 'USD',
+            'British Pound': 'GBP',
+            'Euro': 'EUR',
+            'Japanese Yen': 'JPY',
+            'Australian Dollars': 'AUD',
+            'Canadian Dollars': 'CAD',
+            'Singapore Dollar': 'SGD',
+        }
+
+        tables = soup.find_all('table')
+        for table in tables:
+            rows = table.find_all('tr')
+            for row in rows:
+                cells = row.find_all('td')
+                if len(cells) < 8:
+                    continue
+                text = cells[0].get_text(strip=True)
+                for name, curr in currency_map.items():
+                    if name in text:
+                        try:
+                            # Columns: Currency | Code | CurrBuy | CurrSell | DDBuy | DDSell | TTBuy | TTSell
+                            buying = Decimal(cells[6].get_text(strip=True).replace(',', ''))
+                            selling = Decimal(cells[7].get_text(strip=True).replace(',', ''))
+                            BankExchangeRate.objects.update_or_create(
+                                country=country,
+                                bank_name='NDB Bank',
+                                rate_date=today,
+                                currency=curr,
+                                defaults={
+                                    'buying_rate': buying,
+                                    'selling_rate': selling,
+                                    'source_url': self.BASE_URL,
+                                }
+                            )
+                            count += 1
+                        except (InvalidOperation, IndexError, ValueError):
+                            continue
+                        break
+
+        self.items_scraped = count
+        self.status = 'success' if count > 0 else 'failed'
+
+
 class CommercialBankRateScraper(BaseScraper):
     """Scrape Commercial Bank exchange rates."""
     SOURCE_NAME = "Commercial Bank"
