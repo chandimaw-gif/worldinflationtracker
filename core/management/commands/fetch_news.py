@@ -19,9 +19,9 @@ class Command(BaseCommand):
     help = "Fetch news articles from RSS feeds"
 
     def handle(self, *args, **options):
+        # Google News RSS for Sri Lanka economy (reliable, no IP blocking)
         feeds = [
-            ('https://economynext.com/feed/', 'EconomyNext'),
-            ('https://www.adaderana.lk/rss.php', 'Ada Derana'),
+            ('https://news.google.com/rss/search?q=Sri+Lanka+economy+inflation&hl=en-US&gl=US&ceid=US:en', 'Google News'),
         ]
 
         lka = Country.objects.filter(code='LKA').first()
