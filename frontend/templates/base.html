@@ -9,9 +9,7 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    {% if adsense.enabled %}
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-{{ adsense.publisher_id }}" crossorigin="anonymous"></script>
-    {% endif %}
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2187016535602304" crossorigin="anonymous"></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -84,9 +82,9 @@
     {% endif %}
 
     <footer class="site-footer">
-        <div class="container">
+        <div class="container" style="text-align:center;">
             <p>© {% now "Y" %} World Inflation Tracker. Independent research tool.</p>
-            <p class="disclaimer">
+            <p class="disclaimer" style="text-align:center;max-width:800px;margin-left:auto;margin-right:auto;">
                 <strong>Disclaimer:</strong> This is an independent research tool. The inflation rates published here are NOT official government statistics.
                 For official figures, refer to the Department of Census and Statistics and the Central Bank of Sri Lanka.
             </p>

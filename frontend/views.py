@@ -240,7 +240,8 @@ class ExchangeRateView(TemplateView):
         from core.models import BankExchangeRate
         # Get latest rates for each bank-currency combo
         currencies = ['USD', 'GBP', 'EUR']
-        banks = ['Seylan Bank', 'Commercial Bank', 'Sampath Bank']
+        # Only Commercial Bank scraper works reliably; Seylan & Sampath block scrapers
+        banks = ['Commercial Bank']
         comparison = []
         for curr in currencies:
             row = {'currency': curr, 'banks': []}

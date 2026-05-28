@@ -9,25 +9,25 @@
 
     <div class="stats-grid mini">
         <div class="stat-card">
-            <h4>Current USD/LKR</h4>
+            <h4>LKR per 1 USD</h4>
             <div class="stat-value">
                 {% if latest_rate %}{{ latest_rate.rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
         </div>
         <div class="stat-card">
-            <h4>90-Day High</h4>
+            <h4>90-Day High (LKR)</h4>
             <div class="stat-value">
                 {% if high_rate %}{{ high_rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
         </div>
         <div class="stat-card">
-            <h4>90-Day Low</h4>
+            <h4>90-Day Low (LKR)</h4>
             <div class="stat-value">
                 {% if low_rate %}{{ low_rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
         </div>
         <div class="stat-card">
-            <h4>YoY Change</h4>
+            <h4>YoY Change (%)</h4>
             <div class="stat-value">
                 {% if yoy_change != None %}
                     <span class="{% if yoy_change > 0 %}positive{% elif yoy_change < 0 %}negative{% else %}neutral{% endif %}">
@@ -56,30 +56,31 @@
     </div>
 
     {% if bank_rates %}
-    <h2 style="margin-top:2rem;font-size:1.125rem;">Bank Exchange Rate Comparison (Today)</h2>
-    <table>
+    <h2 style="margin-top:2rem;font-size:1.125rem;text-align:center;">Bank Exchange Rate Comparison (Today)</h2>
+    <p style="text-align:center;font-size:0.8125rem;color:var(--color-text-muted);">Rates in LKR per 1 unit of foreign currency</p>
+    <table class="bank-rates-table">
         <thead>
             <tr>
                 <th>Currency</th>
                 {% for bank in bank_rates.0.banks %}
-                <th colspan="2">{{ bank.name }}</th>
+                <th colspan="2" style="text-align:center;">{{ bank.name }}</th>
                 {% endfor %}
             </tr>
             <tr>
                 <th></th>
                 {% for bank in bank_rates.0.banks %}
-                <th>Buying</th>
-                <th>Selling</th>
+                <th style="text-align:center;">Buying</th>
+                <th style="text-align:center;">Selling</th>
                 {% endfor %}
             </tr>
         </thead>
         <tbody>
             {% for row in bank_rates %}
             <tr>
-                <td><strong>{{ row.currency }}</strong></td>
+                <td style="text-align:center;"><strong>{{ row.currency }}</strong></td>
                 {% for bank in row.banks %}
-                <td class="numeric">{% if bank.buying %}{{ bank.buying|floatformat:2 }}{% else %}—{% endif %}</td>
-                <td class="numeric">{% if bank.selling %}{{ bank.selling|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td style="text-align:center;">{% if bank.buying %}{{ bank.buying|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td style="text-align:center;">{% if bank.selling %}{{ bank.selling|floatformat:2 }}{% else %}—{% endif %}</td>
                 {% endfor %}
             </tr>
             {% endfor %}
@@ -139,7 +140,7 @@ new Chart(ctx, {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            title: { display: true, text: 'USD/LKR Exchange Rate (Historical)' },
+            title: { display: true, text: 'LKR per 1 USD (Historical)' },
             legend: { display: false }
         },
         scales: {
