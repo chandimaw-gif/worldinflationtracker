@@ -31,7 +31,10 @@ class Command(BaseCommand):
         for url, source_name in feeds:
             self.stdout.write(f"Fetching {source_name}...")
             try:
-                resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
+                resp = requests.get(url, headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8',
+                }, timeout=30)
                 resp.raise_for_status()
                 # Ada Derana uses ISO-8859-1; try UTF-8 first, fallback
                 try:
@@ -60,7 +63,7 @@ class Command(BaseCommand):
                         continue
 
                     # Skip if already exists
-                    if NewsArticle.objects.filter(url=link).exists():
+                    if NewsArticle.objects.filter(source_url=link).exists():
                         skipped_count += 1
                         continue
 
@@ -71,8 +74,8 @@ class Command(BaseCommand):
                         country=lka,
                         title=title[:255],
                         summary=(desc or '')[:500],
-                        url=link[:500],
-                        source=source_name,
+                        source_url=link[:500],
+                        source_name=source_name,
                         published_at=published_at or timezone.now(),
                     )
                     created_count += 1
