@@ -8,7 +8,10 @@ $method = $_SERVER['REQUEST_METHOD'];
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 
 $headers = [];
-$skip = ['Host', 'Connection', 'Accept-Encoding', 'Content-Length'];
+$skip = ['Connection', 'Accept-Encoding', 'Content-Length'];
+
+// Pass the real domain Host header to Django (for ALLOWED_HOSTS)
+$headers[] = 'Host: ' . ($_SERVER['HTTP_HOST'] ?? 'phpstack-1559249-6432512.cloudwaysapps.com');
 
 if (function_exists('getallheaders')) {
     $requestHeaders = getallheaders();

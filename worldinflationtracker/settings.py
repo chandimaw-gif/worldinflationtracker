@@ -16,6 +16,10 @@ SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-me-in-production'
 DEBUG = env('DEBUG', default=False)
 
 ALLOWED_HOSTS = env('ALLOWED_HOSTS', default=['worldinflationtracker.com', 'www.worldinflationtracker.com', 'localhost', '127.0.0.1'])
+# Ensure custom domains are always included even if Cloudways overrides ALLOWED_HOSTS
+for _host in ['worldinflationtracker.com', 'www.worldinflationtracker.com']:
+    if _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_host)
 
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
     'https://worldinflationtracker.com',
