@@ -82,8 +82,8 @@ class Command(BaseCommand):
             period_date = date(current.year, current.month, last_day)
 
             for index_type, label in CPIIndex.INDEX_TYPE_CHOICES:
-                # Skip non_food for now (can be added later)
-                if index_type == 'non_food':
+                # Skip non_food and official types — official data comes from CBSL, not our calculations
+                if index_type in ('non_food', 'official_ccpi', 'official_core_ccpi'):
                     continue
 
                 existing = CPIIndex.objects.filter(
