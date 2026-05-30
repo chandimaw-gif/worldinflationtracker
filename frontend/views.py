@@ -124,6 +124,17 @@ class HomeView(TemplateView):
             'official_core_ccpi': [],
             'official_yoy': [],
             'official_core_yoy': [],
+            'wit_ccpi': [],
+        }
+
+        # WIT CPI lookup (headline, on WIT's own base — shown as overlay)
+        wit_by_month = {
+            (r.period_date.year, r.period_date.month): r
+            for r in CPIIndex.objects.filter(
+                country=country,
+                index_type='headline',
+                group__isnull=True,
+            )
         }
 
         for yr, mo in all_months:
@@ -142,6 +153,9 @@ class HomeView(TemplateView):
             chart_data['official_core_yoy'].append(
                 float(core.yoy_inflation) if core and core.yoy_inflation is not None else None
             )
+
+            wit = wit_by_month.get((yr, mo))
+            chart_data['wit_ccpi'].append(float(wit.index_value) if wit else None)
 
         ctx['chart_data_json'] = json.dumps(chart_data)
         return ctx

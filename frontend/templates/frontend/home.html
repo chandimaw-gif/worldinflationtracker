@@ -132,6 +132,9 @@
                     <option value="2y">Last 2 Years</option>
                     <option value="all" selected>All Time (2022–)</option>
                 </select>
+                <label class="overlay-toggle">
+                    <input type="checkbox" id="wit-overlay"> Show WIT Real-World CPI
+                </label>
             </div>
             <div class="chart-container">
                 <canvas id="main-chart"></canvas>
@@ -218,6 +221,7 @@ const chartData = {{ chart_data_json|safe }};
 const ctx = document.getElementById('main-chart').getContext('2d');
 const metricSelect = document.getElementById('metric-select');
 const rangeSelect = document.getElementById('range-select');
+const witOverlay = document.getElementById('wit-overlay');
 
 const metricColors = {
     official_ccpi:      { border: '#2563eb', bg: 'rgba(37,99,235,0.1)' },
@@ -227,10 +231,10 @@ const metricColors = {
 };
 
 const metricLabels = {
-    official_ccpi:      'Headline CCPI (2021=100)',
-    official_core_ccpi: 'Core CCPI (2021=100)',
-    official_yoy:       'Headline YoY Inflation (%)',
-    official_core_yoy:  'Core YoY Inflation (%)',
+    official_ccpi:      'Headline CCPI — Official (2021=100)',
+    official_core_ccpi: 'Core CCPI — Official (2021=100)',
+    official_yoy:       'Headline YoY Inflation % — Official',
+    official_core_yoy:  'Core YoY Inflation % — Official',
 };
 
 const isYoY = (metric) => metric.endsWith('_yoy');
@@ -242,27 +246,45 @@ function filterByRange(labels, data, range) {
     return { labels: labels.slice(sliceFrom), data: data.slice(sliceFrom) };
 }
 
-function buildDataset(metric, range) {
+function buildDatasets(metric, range, showWIT) {
     const colors = metricColors[metric] || metricColors.official_ccpi;
     const filtered = filterByRange(chartData.labels, chartData[metric] || [], range);
-    return {
-        labels: filtered.labels,
-        datasets: [{
-            label: metricLabels[metric] || metric,
-            data: filtered.data,
-            borderColor: colors.border,
-            backgroundColor: colors.bg,
-            fill: true,
+
+    const datasets = [{
+        label: metricLabels[metric] || metric,
+        data: filtered.data,
+        borderColor: colors.border,
+        backgroundColor: colors.bg,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+        borderWidth: 2,
+    }];
+
+    // WIT overlay — only available for index value modes (not YoY)
+    if (showWIT && !isYoY(metric) && chartData.wit_ccpi && chartData.wit_ccpi.some(v => v !== null)) {
+        const witFiltered = filterByRange(chartData.labels, chartData.wit_ccpi || [], range);
+        datasets.push({
+            label: 'WIT Real-World CPI (estimated)',
+            data: witFiltered.data,
+            borderColor: '#f97316',
+            backgroundColor: 'rgba(249,115,22,0.08)',
+            fill: false,
             tension: 0.3,
-            pointRadius: 2,
-            pointHoverRadius: 5,
-        }]
-    };
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            borderWidth: 2,
+            borderDash: [5, 3],
+        });
+    }
+
+    return { labels: filtered.labels, datasets };
 }
 
 const mainChart = new Chart(ctx, {
     type: 'line',
-    data: buildDataset('official_ccpi', 'all'),
+    data: buildDatasets('official_ccpi', 'all', false),
     options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -274,27 +296,16 @@ const mainChart = new Chart(ctx, {
                     label: function(context) {
                         const val = context.parsed.y;
                         const metric = metricSelect.value;
-                        if (val === null) return context.dataset.label + ': N/A';
+                        if (val === null || val === undefined) return context.dataset.label + ': N/A';
                         return context.dataset.label + ': ' + val.toFixed(1) + (isYoY(metric) ? '%' : '');
                     }
                 }
-            },
-            annotation: isYoY('official_ccpi') ? {
-                annotations: {
-                    zeroline: {
-                        type: 'line', yMin: 0, yMax: 0,
-                        borderColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderDash: [4, 4]
-                    }
-                }
-            } : {}
+            }
         },
         scales: {
             y: {
                 beginAtZero: false,
-                title: {
-                    display: true,
-                    text: 'Index Value (Base 2021=100)'
-                }
+                title: { display: true, text: 'Index Value (Base 2021=100)' }
             }
         }
     }
@@ -303,14 +314,21 @@ const mainChart = new Chart(ctx, {
 function updateChart() {
     const metric = metricSelect.value;
     const range = rangeSelect.value;
-    const newData = buildDataset(metric, range);
+    const showWIT = witOverlay.checked;
+    const newData = buildDatasets(metric, range, showWIT);
     mainChart.data.labels = newData.labels;
     mainChart.data.datasets = newData.datasets;
     mainChart.options.scales.y.title.text = isYoY(metric) ? 'Year-on-Year Change (%)' : 'Index Value (Base 2021=100)';
+
+    // Disable WIT overlay for YoY modes
+    witOverlay.disabled = isYoY(metric);
+    witOverlay.parentElement.style.opacity = isYoY(metric) ? '0.4' : '1';
+
     mainChart.update();
 }
 
 metricSelect.addEventListener('change', updateChart);
 rangeSelect.addEventListener('change', updateChart);
+witOverlay.addEventListener('change', updateChart);
 </script>
 {% endblock %}
