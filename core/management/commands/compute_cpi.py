@@ -17,6 +17,7 @@ class Command(BaseCommand):
         parser.add_argument('--country', type=str, default='LKA', help='ISO 3166-1 alpha-3 country code')
         parser.add_argument('--start', type=str, help='Start date YYYY-MM (default: 12 months ago)')
         parser.add_argument('--end', type=str, help='End date YYYY-MM (default: current month)')
+        parser.add_argument('--months', type=int, help='Number of months back from today (overrides --start)')
         parser.add_argument('--force', action='store_true', help='Overwrite existing CPIIndex records')
         parser.add_argument('--dry-run', action='store_true', help='Show what would be computed without saving')
 
@@ -35,7 +36,9 @@ class Command(BaseCommand):
         else:
             end_date = date(today.year, today.month, 1)
 
-        if options['start']:
+        if options.get('months'):
+            start_date = end_date - relativedelta(months=options['months'] - 1)
+        elif options['start']:
             start_year, start_month = map(int, options['start'].split('-'))
             start_date = date(start_year, start_month, 1)
         else:
@@ -109,9 +112,11 @@ class Command(BaseCommand):
                 )
 
                 if options['dry_run']:
+                    yoy_str = f"{yoy:.2f}" if yoy is not None else "N/A"
+                    mom_str = f"{mom:.2f}" if mom is not None else "N/A"
                     self.stdout.write(
                         f"  [DRY RUN] {period_date} {label}: {index_value:.2f} "
-                        f"(YoY={yoy:.2f if yoy else 'N/A'}%, MoM={mom:.2f if mom else 'N/A'}%)"
+                        f"(YoY={yoy_str}%, MoM={mom_str}%)"
                     )
                     continue
 
@@ -137,9 +142,11 @@ class Command(BaseCommand):
                     )
                     created_count += 1
 
+                yoy_str = f"{yoy:.2f}" if yoy is not None else "N/A"
+                mom_str = f"{mom:.2f}" if mom is not None else "N/A"
                 self.stdout.write(
                     f"  {period_date} {label}: {index_value:.2f} "
-                    f"(YoY={f'{yoy:.2f}' if yoy else 'N/A'}%, MoM={f'{mom:.2f}' if mom else 'N/A'}%)"
+                    f"(YoY={yoy_str}%, MoM={mom_str}%)"
                 )
 
             current += relativedelta(months=1)
