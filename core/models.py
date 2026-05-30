@@ -105,6 +105,8 @@ class CPIIndex(models.Model):
         ('core', 'Core CPI'),
         ('food', 'Food CPI'),
         ('non_food', 'Non-Food CPI'),
+        ('official_ccpi', 'Official CCPI (CBSL/DCS, 2021=100)'),
+        ('official_core_ccpi', 'Official Core CCPI (CBSL/DCS, 2021=100)'),
     ]
 
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='cpi_indices')
