@@ -98,7 +98,23 @@ def check_gas_prices(self):
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def scrape_exchange_rates(self):
+def scrape_cbsl_tt_rates(self):
+    """
+    Fetch CBSL daily average TT buying/selling exchange rates.
+    Runs every morning at 10:00 AM (after 9:30 AM bank quotes).
+    """
+    logger.info("Fetching CBSL TT exchange rates...")
+    try:
+        from scrapers.sources.cbsl_tt_rates import run_cbsl_tt_scraper
+        result = run_cbsl_tt_scraper()
+        logger.info(f"CBSL TT rates: {result['status']} — {result.get('items_scraped', 0)} saved")
+        return {'task': 'scrape_cbsl_tt_rates', 'result': result}
+    except Exception as exc:
+        logger.exception("CBSL TT rates scraper failed")
+        raise self.retry(exc=exc)
+
+
+
     """
     Scrape daily USD/LKR exchange rate from CBSL.
     Runs every morning at 4:00 AM.

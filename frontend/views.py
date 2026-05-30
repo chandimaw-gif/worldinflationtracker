@@ -260,24 +260,42 @@ class ExchangeRateView(TemplateView):
 
     def _get_bank_comparison(self, country_code, today):
         from core.models import BankExchangeRate
-        # Get latest rates for each bank-currency combo
-        currencies = ['USD', 'GBP', 'EUR']
-        # Commercial Bank and NDB have working scrapers
-        banks = ['Commercial Bank', 'NDB Bank']
+        currencies = ['USD', 'GBP', 'EUR', 'AUD', 'CAD', 'SGD']
+
+        # Primary source: CBSL Average TT rates (most reliable)
+        # Fallback: individual bank scrapers if available
+        bank_sources = ['CBSL Average TT', 'Commercial Bank', 'NDB Bank', 'Seylan Bank', 'Sampath Bank']
+
+        # Find which banks have recent data (last 7 days)
+        from datetime import timedelta
+        recent_cutoff = today - timedelta(days=7)
+        available_banks = list(
+            BankExchangeRate.objects.filter(
+                country__code=country_code,
+                rate_date__gte=recent_cutoff,
+            ).values_list('bank_name', flat=True).distinct()
+        )
+
+        # Use available banks, preserving preferred order
+        banks_to_show = [b for b in bank_sources if b in available_banks]
+        if not banks_to_show:
+            banks_to_show = bank_sources[:2]  # Show structure even if empty
+
         comparison = []
         for curr in currencies:
             row = {'currency': curr, 'banks': []}
-            for bank in banks:
+            for bank in banks_to_show:
                 rate = BankExchangeRate.objects.filter(
                     country__code=country_code,
                     bank_name=bank,
                     currency=curr,
-                    rate_date__lte=today
+                    rate_date__lte=today,
                 ).order_by('-rate_date').first()
                 row['banks'].append({
                     'name': bank,
                     'buying': float(rate.buying_rate) if rate and rate.buying_rate else None,
                     'selling': float(rate.selling_rate) if rate and rate.selling_rate else None,
+                    'date': str(rate.rate_date) if rate else None,
                 })
             comparison.append(row)
         return comparison

@@ -5,97 +5,117 @@
 {% block content %}
 <div class="container content-page">
     <h1>Exchange Rates & Market Data</h1>
-    <p class="subtitle">USD/LKR trends, bank comparisons, and interest rates.</p>
+    <p class="subtitle">CBSL indicative rates, bank TT rates, and Sri Lankan interest rates.</p>
 
+    <!-- Key stats -->
     <div class="stats-grid mini">
         <div class="stat-card">
-            <h4>LKR per 1 USD</h4>
+            <h4>USD/LKR (Indicative)</h4>
             <div class="stat-value">
                 {% if latest_rate %}{{ latest_rate.rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
+            {% if latest_rate %}<div class="stat-period">{{ latest_rate.rate_date }}</div>{% endif %}
         </div>
         <div class="stat-card">
-            <h4>90-Day High (LKR)</h4>
+            <h4>90-Day High</h4>
             <div class="stat-value">
                 {% if high_rate %}{{ high_rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
         </div>
         <div class="stat-card">
-            <h4>90-Day Low (LKR)</h4>
+            <h4>90-Day Low</h4>
             <div class="stat-value">
                 {% if low_rate %}{{ low_rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
         </div>
         <div class="stat-card">
-            <h4>YoY Change (%)</h4>
+            <h4>YoY Change</h4>
             <div class="stat-value">
                 {% if yoy_change != None %}
                     <span class="{% if yoy_change > 0 %}positive{% elif yoy_change < 0 %}negative{% else %}neutral{% endif %}">
-                        {{ yoy_change|floatformat:2 }}%
+                        {{ yoy_change|floatformat:1 }}%
                     </span>
                 {% else %}—{% endif %}
             </div>
         </div>
     </div>
 
+    <!-- Interest rates -->
     {% if market_rates %}
-    <div class="stats-grid mini" style="margin-top:1rem;">
+    <h2 style="margin-top:2rem;font-size:1.1rem;">📊 Key Interest Rates</h2>
+    <div class="stats-grid mini" style="margin-top:0.75rem;">
         {% for label, value in market_rates.items %}
         <div class="stat-card">
             <h4>{{ label }}</h4>
-            <div class="stat-value">{{ value|floatformat:2 }}%</div>
+            <div class="stat-value" style="font-size:1.25rem;">{{ value|floatformat:2 }}%</div>
         </div>
         {% endfor %}
     </div>
     {% endif %}
 
-    <div class="chart-section">
+    <!-- Chart -->
+    <div class="chart-section" style="margin-top:2rem;">
+        <h2 style="font-size:1.1rem;">📈 USD/LKR Historical Rate</h2>
         <div class="chart-container large">
             <canvas id="exchange-chart"></canvas>
         </div>
     </div>
 
+    <!-- Bank TT rates table -->
     {% if bank_rates %}
-    <h2 style="margin-top:2rem;font-size:1.125rem;text-align:center;">Bank Exchange Rate Comparison (Today)</h2>
-    <p style="text-align:center;font-size:0.8125rem;color:var(--color-text-muted);">How much LKR you get or pay per 1 unit of foreign currency</p>
+    <h2 style="margin-top:2.5rem;font-size:1.1rem;">🏦 TT Exchange Rates</h2>
+    <p style="font-size:0.8125rem;color:var(--color-text-muted);margin-bottom:0.75rem;">
+        Telegraphic Transfer (TT) rates — LKR per 1 unit of foreign currency.
+        CBSL Average TT = average of licensed commercial bank quotes at 9:30 AM.
+    </p>
+    <div style="overflow-x:auto;">
     <table class="bank-rates-table">
         <thead>
             <tr>
-                <th style="text-align:center;">Currency</th>
+                <th>Currency</th>
                 {% for bank in bank_rates.0.banks %}
                 <th colspan="2" style="text-align:center;">{{ bank.name }}</th>
                 {% endfor %}
             </tr>
             <tr>
-                <th style="text-align:center;"></th>
+                <th></th>
                 {% for bank in bank_rates.0.banks %}
-                <th style="text-align:center;">Bank Buys<br><small>(LKR)</small></th>
-                <th style="text-align:center;">Bank Sells<br><small>(LKR)</small></th>
+                <th style="text-align:center;">Buy (LKR)</th>
+                <th style="text-align:center;">Sell (LKR)</th>
                 {% endfor %}
             </tr>
         </thead>
         <tbody>
             {% for row in bank_rates %}
+            {% if row.banks.0.buying or row.banks.0.selling %}
             <tr>
-                <td style="text-align:center;"><strong>1 {{ row.currency }} =</strong></td>
+                <td><strong>{{ row.currency }}</strong></td>
                 {% for bank in row.banks %}
-                <td style="text-align:center;">{% if bank.buying %}{{ bank.buying|floatformat:2 }}{% else %}—{% endif %}</td>
-                <td style="text-align:center;">{% if bank.selling %}{{ bank.selling|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td style="text-align:right;">
+                    {% if bank.buying %}{{ bank.buying|floatformat:2 }}{% else %}<span style="color:#aaa;">—</span>{% endif %}
+                </td>
+                <td style="text-align:right;">
+                    {% if bank.selling %}{{ bank.selling|floatformat:2 }}{% else %}<span style="color:#aaa;">—</span>{% endif %}
+                </td>
                 {% endfor %}
             </tr>
+            {% endif %}
             {% endfor %}
         </tbody>
     </table>
-    <p style="font-size:0.8125rem;color:var(--color-text-muted);">Rates are indicative. Please confirm with your bank before transactions.</p>
+    </div>
+    <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.5rem;">
+        Source: Central Bank of Sri Lanka. Rates are indicative — confirm with your bank before transacting.
+    </p>
+    {% else %}
+    <div class="widget" style="text-align:center;margin-top:2rem;">
+        <p class="no-data">Bank TT rate data not yet available. Run <code>python3 manage.py fetch_cbsl_tt_rates</code> on the server to fetch today's rates.</p>
+    </div>
     {% endif %}
 
-    <div class="table-wrapper">
-        <h3>Recent Rates</h3>
-        <p style="font-size:0.8125rem;color:var(--color-text-muted);margin-bottom:0.75rem;">
-            <strong>Note:</strong> Historical rates (before {% now "Y-m-d" %}) were sourced from x-rates.com.
-            From today onwards, rates reflect the <strong>CBSL Indicative Spot Rate</strong>
-            (weighted average of inter-bank transactions).
-        </p>
+    <!-- Historical rates table -->
+    <div class="table-wrapper" style="margin-top:2rem;">
+        <h2 style="font-size:1.1rem;">📅 Recent USD/LKR Rates</h2>
         <table>
             <thead>
                 <tr><th>Date</th><th>USD/LKR</th><th>Source</th></tr>
@@ -104,8 +124,8 @@
                 {% for r in rates %}
                 <tr>
                     <td>{{ r.rate_date }}</td>
-                    <td class="numeric">{{ r.rate|floatformat:4 }}</td>
-                    <td>{{ r.source|default:"CBSL" }}</td>
+                    <td class="numeric">{{ r.rate|floatformat:2 }}</td>
+                    <td style="font-size:0.8125rem;color:var(--color-text-muted);">{{ r.source|default:"CBSL" }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="3" class="no-data">No exchange rate data yet.</td></tr>
@@ -119,7 +139,6 @@
 {% block extra_js %}
 <script>
 const exchangeChartData = {{ exchange_chart_json|safe }};
-
 const ctx = document.getElementById('exchange-chart').getContext('2d');
 new Chart(ctx, {
     type: 'line',
@@ -129,22 +148,28 @@ new Chart(ctx, {
             label: 'USD/LKR',
             data: exchangeChartData.data,
             borderColor: '#2563eb',
-            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            backgroundColor: 'rgba(37, 99, 235, 0.08)',
             fill: true,
             tension: 0.3,
             pointRadius: 1,
-            pointHoverRadius: 5
+            pointHoverRadius: 5,
+            borderWidth: 2,
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
         plugins: {
-            title: { display: true, text: 'LKR per 1 USD (Historical)' },
-            legend: { display: false }
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: ctx => `LKR ${ctx.parsed.y.toFixed(2)} per 1 USD`
+                }
+            }
         },
         scales: {
-            y: { title: { display: true, text: 'LKR per 1 USD' } }
+            y: { title: { display: true, text: 'LKR per 1 USD' }, beginAtZero: false }
         }
     }
 });
