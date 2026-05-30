@@ -224,8 +224,12 @@ def save_official_ccpi(records: list[dict], country, source_note: str = '') -> t
     # Official base period for CCPI 2021=100 series
     base_period = date(2021, 1, 1)
 
+    import calendar
+
     for rec in records:
-        period_date = date(rec['year'], rec['month'], 1)
+        # Use last day of month — consistent with how compute_cpi stores WIT data
+        last_day = calendar.monthrange(rec['year'], rec['month'])[1]
+        period_date = date(rec['year'], rec['month'], last_day)
 
         for idx_type, val, yoy, mom in [
             ('official_ccpi', rec['ccpi'], rec['yoy_pct'], rec['mom_pct']),

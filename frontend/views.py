@@ -114,6 +114,14 @@ class HomeView(TemplateView):
             (r.period_date.year, r.period_date.month): r
             for r in core_qs
         }
+        wit_by_month = {
+            (r.period_date.year, r.period_date.month): r
+            for r in CPIIndex.objects.filter(
+                country=country,
+                index_type='headline',
+                group__isnull=True,
+            )
+        }
 
         # Build unified month list spanning all available data
         all_months = sorted(set(official_by_month.keys()) | set(core_by_month.keys()))
@@ -125,16 +133,6 @@ class HomeView(TemplateView):
             'official_yoy': [],
             'official_core_yoy': [],
             'wit_ccpi': [],
-        }
-
-        # WIT CPI lookup (headline, on WIT's own base — shown as overlay)
-        wit_by_month = {
-            (r.period_date.year, r.period_date.month): r
-            for r in CPIIndex.objects.filter(
-                country=country,
-                index_type='headline',
-                group__isnull=True,
-            )
         }
 
         for yr, mo in all_months:
