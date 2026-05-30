@@ -34,35 +34,32 @@ class HomeView(TemplateView):
         return context
 
     def _get_cpi_context(self, country):
-        """Fetch latest CPI indices with YoY changes."""
+        """Fetch latest official CBSL CCPI data for the stat cards."""
         ctx = {}
-        today = date.today()
-        period_end = date(today.year, today.month, 1)
 
-        for idx_type in ['headline', 'core', 'food']:
-            # Try stored CPIIndex first
-            latest = CPIIndex.objects.filter(
-                country=country,
-                index_type=idx_type,
-                group__isnull=True
-            ).order_by('-period_date').first()
+        # Official headline CCPI (primary source — CBSL/DCS)
+        official = CPIIndex.objects.filter(
+            country=country,
+            index_type='official_ccpi',
+            group__isnull=True,
+        ).order_by('-period_date').first()
+        ctx['official_ccpi'] = official
 
-            if latest:
-                ctx[f'{idx_type}_cpi'] = latest
-            else:
-                # Fallback: compute on-the-fly for current month
-                index_value = compute_cpi(country, period_end, index_type=idx_type)
-                if index_value is not None:
-                    yoy, mom, ma12 = compute_inflation_rates(country, period_end, index_type=idx_type)
-                    ctx[f'{idx_type}_cpi'] = {
-                        'index_value': index_value,
-                        'yoy_inflation': yoy,
-                        'mom_inflation': mom,
-                        'period_date': period_end,
-                        '_computed_on_the_fly': True,
-                    }
-                else:
-                    ctx[f'{idx_type}_cpi'] = None
+        # Official core CCPI
+        official_core = CPIIndex.objects.filter(
+            country=country,
+            index_type='official_core_ccpi',
+            group__isnull=True,
+        ).order_by('-period_date').first()
+        ctx['official_core_ccpi'] = official_core
+
+        # WIT's own calculated CPI (for comparison — shown separately)
+        wit_headline = CPIIndex.objects.filter(
+            country=country,
+            index_type='headline',
+            group__isnull=True,
+        ).order_by('-period_date').first()
+        ctx['wit_headline_cpi'] = wit_headline
 
         return ctx
 
@@ -92,46 +89,59 @@ class HomeView(TemplateView):
         return ctx
 
     def _get_chart_context(self, country):
-        """Build chart data for the last 24 months of CPI."""
+        """Build chart data using official CBSL CCPI data (2022–present)."""
         ctx = {}
-        end_date = date.today()
-        start_date = end_date - relativedelta(months=23)
 
-        # Build a list of month-end dates
-        months = []
-        current = date(start_date.year, start_date.month, 1)
-        while current <= end_date:
-            import calendar
-            last_day = calendar.monthrange(current.year, current.month)[1]
-            months.append(date(current.year, current.month, last_day))
-            current += relativedelta(months=1)
+        # Fetch all official CCPI records ordered chronologically
+        official_qs = CPIIndex.objects.filter(
+            country=country,
+            index_type='official_ccpi',
+            group__isnull=True,
+        ).order_by('period_date')
+
+        core_qs = CPIIndex.objects.filter(
+            country=country,
+            index_type='official_core_ccpi',
+            group__isnull=True,
+        ).order_by('period_date')
+
+        # Build lookup dicts: (year, month) → record
+        official_by_month = {
+            (r.period_date.year, r.period_date.month): r
+            for r in official_qs
+        }
+        core_by_month = {
+            (r.period_date.year, r.period_date.month): r
+            for r in core_qs
+        }
+
+        # Build unified month list spanning all available data
+        all_months = sorted(set(official_by_month.keys()) | set(core_by_month.keys()))
 
         chart_data = {
             'labels': [],
-            'headline': [],
-            'core': [],
-            'food': [],
+            'official_ccpi': [],
+            'official_core_ccpi': [],
+            'official_yoy': [],
+            'official_core_yoy': [],
         }
 
-        for m in months:
-            label = m.strftime('%b %Y')
+        for yr, mo in all_months:
+            import calendar
+            label = date(yr, mo, 1).strftime('%b %Y')
             chart_data['labels'].append(label)
 
-            for idx_type in ['headline', 'core', 'food']:
-                cpi = CPIIndex.objects.filter(
-                    country=country,
-                    index_type=idx_type,
-                    group__isnull=True,
-                    period_date__year=m.year,
-                    period_date__month=m.month
-                ).order_by('-period_date').first()
+            rec = official_by_month.get((yr, mo))
+            chart_data['official_ccpi'].append(float(rec.index_value) if rec else None)
+            chart_data['official_yoy'].append(
+                float(rec.yoy_inflation) if rec and rec.yoy_inflation is not None else None
+            )
 
-                if cpi:
-                    chart_data[idx_type].append(float(cpi.index_value))
-                else:
-                    # Try to compute on-the-fly
-                    val = compute_cpi(country, m, index_type=idx_type)
-                    chart_data[idx_type].append(float(val) if val else None)
+            core = core_by_month.get((yr, mo))
+            chart_data['official_core_ccpi'].append(float(core.index_value) if core else None)
+            chart_data['official_core_yoy'].append(
+                float(core.yoy_inflation) if core and core.yoy_inflation is not None else None
+            )
 
         ctx['chart_data_json'] = json.dumps(chart_data)
         return ctx
