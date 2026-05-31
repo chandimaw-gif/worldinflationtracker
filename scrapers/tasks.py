@@ -276,14 +276,26 @@ def fetch_news_feeds(self):
     }
 
     feeds = [
+        # Primary sources — direct RSS
         ('https://economynext.com/feed/', 'EconomyNext', 'economy'),
-        ('https://www.adaderana.lk/rss.php', 'Ada Derana', 'economy'),
-        ('https://www.newsfirst.lk/feed', 'NewsFirst', 'economy'),
+
+        # Google News RSS — aggregates all Sri Lankan sources, very reliable
+        ('https://news.google.com/rss/search?q=sri+lanka+inflation+ccpi+economy&hl=en-LK&gl=LK&ceid=LK:en',
+         'Google News · Economy', 'economy'),
+        ('https://news.google.com/rss/search?q=CBSL+central+bank+sri+lanka+policy+rate&hl=en-LK&gl=LK&ceid=LK:en',
+         'Google News · CBSL', 'policy'),
+        ('https://news.google.com/rss/search?q=sri+lanka+rupee+exchange+rate+LKR&hl=en-LK&gl=LK&ceid=LK:en',
+         'Google News · Markets', 'markets'),
+        ('https://news.google.com/rss/search?q=sri+lanka+fuel+price+food+price&hl=en-LK&gl=LK&ceid=LK:en',
+         'Google News · Prices', 'economy'),
+
+        # Direct sources — work from Cloudways IP
         ('https://www.ft.lk/rss', 'Daily FT', 'markets'),
+        ('https://www.adaderana.lk/rss.php', 'Ada Derana', 'economy'),
         ('https://www.dailymirror.lk/rss', 'Daily Mirror', 'economy'),
-        ('https://www.themorning.lk/feed', 'The Morning', 'economy'),
         ('https://colombogazette.com/feed', 'Colombo Gazette', 'policy'),
-        ('https://www.cbsl.gov.lk/en/rss-feeds', 'CBSL', 'policy'),
+        ('https://www.themorning.lk/feed', 'The Morning', 'economy'),
+        ('https://www.newsfirst.lk/feed', 'NewsFirst', 'economy'),
     ]
 
     # Keywords for category classification
@@ -349,7 +361,8 @@ def fetch_news_feeds(self):
                     continue
 
                 # Skip non-economy articles from general news sources
-                if source_name in ('Ada Derana', 'NewsFirst', 'Daily Mirror', 'Colombo Gazette'):
+                # (but not from Google News which is already search-filtered)
+                if source_name in ('Ada Derana', 'NewsFirst', 'Daily Mirror', 'Colombo Gazette') and 'Google News' not in source_name:
                     econ_keywords = ['inflation', 'price', 'economy', 'cbsl', 'rupee', 'fuel',
                                      'food', 'cost', 'tax', 'budget', 'imf', 'trade', 'growth',
                                      'gdp', 'interest', 'exchange', 'bank', 'financial', 'market']
@@ -357,8 +370,14 @@ def fetch_news_feeds(self):
                     if not any(kw in text_check for kw in econ_keywords):
                         continue
 
-                published_dt = None
-                if published:
+                # For Google News, extract the real publisher from the source field
+                display_source = source_name
+                if 'Google News' in source_name:
+                    real_source = entry.get('source', {}).get('title', '')
+                    if real_source:
+                        display_source = real_source
+                    # Also clean " - Publisher Name" from end of Google News titles
+                    title = re.sub(r'\s+-\s+[\w\s]+$', '', title).strip()
                     try:
                         published_dt = datetime(*published[:6], tzinfo=timezone.get_current_timezone())
                     except Exception:
@@ -372,7 +391,7 @@ def fetch_news_feeds(self):
                         'country': lka,
                         'title': title,
                         'summary': summary,
-                        'source_name': source_name,
+                        'source_name': display_source,
                         'published_at': published_dt,
                         'category': category,
                     }
