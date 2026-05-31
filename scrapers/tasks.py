@@ -253,42 +253,118 @@ def scrape_utility_prices(self):
 def fetch_news_feeds(self):
     """
     Fetch RSS feeds every 30 minutes.
-    Sources: EconomyNext, DailyMirror, Ada Derana Business.
+    Sources: EconomyNext, Ada Derana, NewsFirst, Daily FT, Daily Mirror,
+             The Morning, Colombo Gazette + CBSL press releases.
+    Classifies articles by category and cleans HTML from summaries.
     """
     import feedparser
+    import requests
+    import html
+    import re
     from core.models import NewsArticle, Country
     from datetime import datetime
     from django.utils import timezone
 
     logger.info("Fetching news RSS feeds...")
 
+    HEADERS = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/124.0.0.0 Safari/537.36'
+        )
+    }
+
     feeds = [
-        ('https://economynext.com/feed/', 'EconomyNext'),
-        ('https://www.adaderana.lk/rss.php', 'Ada Derana'),
-        ('https://www.newsfirst.lk/feed', 'NewsFirst'),
+        ('https://economynext.com/feed/', 'EconomyNext', 'economy'),
+        ('https://www.adaderana.lk/rss.php', 'Ada Derana', 'economy'),
+        ('https://www.newsfirst.lk/feed', 'NewsFirst', 'economy'),
+        ('https://www.ft.lk/rss', 'Daily FT', 'markets'),
+        ('https://www.dailymirror.lk/rss', 'Daily Mirror', 'economy'),
+        ('https://www.themorning.lk/feed', 'The Morning', 'economy'),
+        ('https://colombogazette.com/feed', 'Colombo Gazette', 'policy'),
+        ('https://www.cbsl.gov.lk/en/rss-feeds', 'CBSL', 'policy'),
     ]
+
+    # Keywords for category classification
+    CATEGORY_KEYWORDS = {
+        'policy': ['cbsl', 'central bank', 'policy rate', 'monetary', 'government', 'ministry',
+                   'parliament', 'president', 'imf', 'budget', 'fiscal', 'tax', 'regulation'],
+        'markets': ['exchange rate', 'usd', 'lkr', 'rupee', 'stock', 'cse', 'shares', 'bond',
+                    'forex', 'gold price', 'oil price', 'interest rate', 'treasury'],
+        'international': ['global', 'world', 'china', 'india', 'usa', 'fed', 'ecb', 'opec',
+                          'international', 'export', 'import', 'trade'],
+        'economy': ['inflation', 'cpi', 'ccpi', 'price', 'cost', 'gdp', 'growth', 'economy',
+                    'fuel', 'food', 'electricity', 'gas', 'transport', 'employment'],
+    }
+
+    def classify_category(title, summary, default_cat):
+        text = (title + ' ' + summary).lower()
+        for cat, keywords in CATEGORY_KEYWORDS.items():
+            if any(kw in text for kw in keywords):
+                return cat
+        return default_cat
+
+    def clean_summary(text):
+        """Strip HTML tags and clean up RSS summaries."""
+        if not text:
+            return ''
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = html.unescape(text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        # Truncate to ~280 chars at sentence boundary
+        if len(text) > 280:
+            truncated = text[:280]
+            last_period = truncated.rfind('.')
+            if last_period > 150:
+                text = truncated[:last_period + 1]
+            else:
+                text = truncated.rstrip() + '…'
+        return text
 
     created_count = 0
     lka = Country.objects.filter(code='LKA').first()
 
-    for url, source_name in feeds:
+    for url, source_name, default_category in feeds:
         try:
-            parsed = feedparser.parse(url, agent='Mozilla/5.0 (compatible; WorldInflationTracker/1.0)')
-            if not parsed.entries:
-                logger.warning(f"{source_name}: no entries found (status={parsed.get('status', 'unknown')})")
+            # Fetch with real browser headers to avoid 403s
+            r = requests.get(url, headers=HEADERS, timeout=15)
+            if r.status_code != 200:
+                logger.warning(f"{source_name}: HTTP {r.status_code}")
                 continue
+
+            parsed = feedparser.parse(r.text)
+            if not parsed.entries:
+                logger.warning(f"{source_name}: no entries found")
+                continue
+
             for entry in parsed.entries[:10]:
                 title = entry.get('title', '').strip()
                 link = entry.get('link', '').strip()
-                summary = entry.get('summary', '')[:500]
+                raw_summary = entry.get('summary', '') or entry.get('description', '')
+                summary = clean_summary(raw_summary)
                 published = entry.get('published_parsed') or entry.get('updated_parsed')
 
                 if not title or not link:
                     continue
 
+                # Skip non-economy articles from general news sources
+                if source_name in ('Ada Derana', 'NewsFirst', 'Daily Mirror', 'Colombo Gazette'):
+                    econ_keywords = ['inflation', 'price', 'economy', 'cbsl', 'rupee', 'fuel',
+                                     'food', 'cost', 'tax', 'budget', 'imf', 'trade', 'growth',
+                                     'gdp', 'interest', 'exchange', 'bank', 'financial', 'market']
+                    text_check = (title + ' ' + summary).lower()
+                    if not any(kw in text_check for kw in econ_keywords):
+                        continue
+
                 published_dt = None
                 if published:
-                    published_dt = datetime(*published[:6], tzinfo=timezone.get_current_timezone())
+                    try:
+                        published_dt = datetime(*published[:6], tzinfo=timezone.get_current_timezone())
+                    except Exception:
+                        pass
+
+                category = classify_category(title, summary, default_category)
 
                 _, created = NewsArticle.objects.get_or_create(
                     source_url=link,
@@ -298,15 +374,25 @@ def fetch_news_feeds(self):
                         'summary': summary,
                         'source_name': source_name,
                         'published_at': published_dt,
-                        'category': 'economy',
+                        'category': category,
                     }
                 )
                 if created:
                     created_count += 1
 
-            logger.info(f"{source_name}: fetched {len(parsed.entries)} entries")
+            logger.info(f"{source_name}: processed {len(parsed.entries)} entries")
+
         except Exception as exc:
             logger.exception(f"Failed to fetch {source_name} RSS")
+
+    # Clean up old articles (keep last 200)
+    try:
+        from core.models import NewsArticle
+        cutoff_ids = NewsArticle.objects.order_by('-published_at').values_list('id', flat=True)[200:]
+        if cutoff_ids:
+            NewsArticle.objects.filter(id__in=list(cutoff_ids)).delete()
+    except Exception:
+        pass
 
     logger.info(f"News fetch complete. Created {created_count} new articles.")
     return f"Created {created_count} new articles."

@@ -193,23 +193,53 @@
     </div>
 
     <section class="news-feed">
-        <h2>📰 Latest Economic News</h2>
-        <div class="news-list" id="news-list">
-            {% if news_articles %}
-                {% for article in news_articles %}
-                <article class="news-item">
-                    <h4><a href="{{ article.source_url }}" target="_blank" rel="noopener">{{ article.title }}</a></h4>
-                    <div class="news-meta">
-                        {% if article.category %}<span class="news-category">{{ article.category }}</span>{% endif %}
-                        {{ article.source_name }}
-                        {% if article.published_at %}· {{ article.published_at|date:"M j, Y" }}{% endif %}
-                    </div>
-                </article>
-                {% endfor %}
-            {% else %}
-                <p class="no-data">No news articles available yet.</p>
-            {% endif %}
+        <div class="news-feed-header">
+            <h2>📰 Latest Economic News</h2>
+            <span class="news-feed-sources">EconomyNext · Daily FT · Ada Derana · Daily Mirror · The Morning · Colombo Gazette · CBSL</span>
         </div>
+
+        {% if news_articles %}
+        <div class="news-grid">
+            {% for article in news_articles %}
+            <article class="news-card">
+                <div class="news-card-header">
+                    {% if article.category %}
+                    <span class="news-badge news-badge--{{ article.category }}">
+                        {% if article.category == 'policy' %}Policy
+                        {% elif article.category == 'markets' %}Markets
+                        {% elif article.category == 'international' %}International
+                        {% else %}Economy{% endif %}
+                    </span>
+                    {% endif %}
+                    <span class="news-source">{{ article.source_name }}</span>
+                </div>
+
+                <h4 class="news-title">
+                    <a href="{{ article.source_url }}" target="_blank" rel="noopener noreferrer">
+                        {{ article.title }}
+                    </a>
+                </h4>
+
+                {% if article.summary %}
+                <p class="news-summary">{{ article.summary }}</p>
+                {% endif %}
+
+                <div class="news-footer">
+                    {% if article.published_at %}
+                    <span class="news-time">{{ article.published_at|timesince }} ago</span>
+                    {% endif %}
+                    <a href="{{ article.source_url }}" target="_blank" rel="noopener noreferrer" class="news-read-more">
+                        Read full article →
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="news-empty">
+            <p>No news articles available yet. Run <code>python3 manage.py fetch_news_now</code> to populate.</p>
+        </div>
+        {% endif %}
     </section>
 </div>
 {% endblock %}

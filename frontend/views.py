@@ -74,16 +74,19 @@ class HomeView(TemplateView):
         return ctx
 
     def _get_news_context(self, country):
-        """Fetch latest news articles."""
+        """Fetch latest 9 news articles for 3x3 card grid."""
         ctx = {}
         articles = NewsArticle.objects.filter(
             country=country
-        ).order_by('-published_at')[:6]
-        # Also include global news (no country assigned)
-        if articles.count() < 6:
+        ).order_by('-published_at')[:9]
+        # Fallback to global articles if not enough country-specific ones
+        if len(articles) < 9:
+            existing_ids = [a.id for a in articles]
             global_articles = NewsArticle.objects.filter(
                 country__isnull=True
-            ).order_by('-published_at')[:6 - articles.count()]
+            ).exclude(
+                id__in=existing_ids
+            ).order_by('-published_at')[:9 - len(articles)]
             articles = list(articles) + list(global_articles)
         ctx['news_articles'] = articles
         return ctx
