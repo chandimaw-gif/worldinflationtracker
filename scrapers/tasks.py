@@ -98,7 +98,40 @@ def check_gas_prices(self):
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def scrape_cbsl_tt_rates(self):
+def import_exchange_rates_from_sheet(self):
+    """
+    Daily at 10:30 AM SLT (05:00 UTC): import bank exchange rates
+    from the WIT Google Sheet Exchange Rates tab.
+    Runs 30 minutes after the Apps Script updates rates at 10:00 AM.
+    """
+    logger.info("Importing bank exchange rates from Google Sheet...")
+    try:
+        from django.core.management import call_command
+        call_command('import_google_sheet_rates')
+        return {'task': 'import_exchange_rates_from_sheet', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("Exchange rate import failed")
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def import_wit_prices_from_sheet(self):
+    """
+    1st of each month at 12:30 PM SLT (07:00 UTC): import WIT prices
+    from the Google Sheet and recompute WIT CPI.
+    Runs 30 minutes after Apps Script updates prices at 12:00 noon.
+    """
+    logger.info("Importing WIT prices from Google Sheet...")
+    try:
+        from django.core.management import call_command
+        call_command('import_wit_prices')
+        return {'task': 'import_wit_prices_from_sheet', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("WIT price import failed")
+        raise self.retry(exc=exc)
+
+
+
     """
     Fetch CBSL daily average TT buying/selling exchange rates.
     Runs every morning at 10:00 AM (after 9:30 AM bank quotes).

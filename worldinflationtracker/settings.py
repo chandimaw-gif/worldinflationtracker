@@ -150,6 +150,19 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'scrapers.tasks.compute_monthly_cpi',
         'schedule': 'crontab(day_of_month=2, hour=3, minute=0)',
     },
+    # Google Sheet imports — run after Apps Script updates
+    # Apps Script updates exchange rates at 10:00 AM SLT (04:30 UTC)
+    # We import at 10:30 AM SLT (05:00 UTC) — 30 min buffer
+    'import-exchange-rates-from-sheet': {
+        'task': 'scrapers.tasks.import_exchange_rates_from_sheet',
+        'schedule': 'crontab(hour=5, minute=0)',
+    },
+    # Apps Script updates prices on 1st of month at 12:00 noon SLT (06:30 UTC)
+    # We import at 12:30 PM SLT (07:00 UTC) — 30 min buffer
+    'import-wit-prices-from-sheet': {
+        'task': 'scrapers.tasks.import_wit_prices_from_sheet',
+        'schedule': 'crontab(day_of_month=1, hour=7, minute=0)',
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [
