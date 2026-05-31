@@ -290,11 +290,9 @@ def fetch_news_feeds(self):
          'Google News · Prices', 'economy'),
 
         # Direct sources — work from Cloudways IP
-        ('https://www.ft.lk/rss', 'Daily FT', 'markets'),
         ('https://www.adaderana.lk/rss.php', 'Ada Derana', 'economy'),
         ('https://www.dailymirror.lk/rss', 'Daily Mirror', 'economy'),
         ('https://colombogazette.com/feed', 'Colombo Gazette', 'policy'),
-        ('https://www.themorning.lk/feed', 'The Morning', 'economy'),
         ('https://www.newsfirst.lk/feed', 'NewsFirst', 'economy'),
     ]
 
@@ -340,7 +338,7 @@ def fetch_news_feeds(self):
     for url, source_name, default_category in feeds:
         try:
             # Fetch with real browser headers to avoid 403s
-            r = requests.get(url, headers=HEADERS, timeout=15)
+            r = requests.get(url, headers=HEADERS, timeout=8)
             if r.status_code != 200:
                 logger.warning(f"{source_name}: HTTP {r.status_code}")
                 continue
@@ -376,8 +374,10 @@ def fetch_news_feeds(self):
                     real_source = entry.get('source', {}).get('title', '')
                     if real_source:
                         display_source = real_source
-                    # Also clean " - Publisher Name" from end of Google News titles
                     title = re.sub(r'\s+-\s+[\w\s]+$', '', title).strip()
+
+                published_dt = None
+                if published:
                     try:
                         published_dt = datetime(*published[:6], tzinfo=timezone.get_current_timezone())
                     except Exception:
