@@ -277,15 +277,19 @@ def fetch_news_feeds(self):
         )
     }
 
-    # Known Sri Lankan news publishers — block non-SL sources from Google News
-    SL_PUBLISHERS = {
-        'economynext', 'economy next', 'daily ft', 'ft.lk', 'island.lk', 'the island',
-        'daily mirror', 'ada derana', 'newsfirst', 'colombo gazette', 'the morning',
-        'sunday times', 'cbsl', 'central bank of sri lanka', 'lankabusinessonline',
-        'lbo', 'colombo page', 'colombopage', 'hirunews', 'news radio',
-        'ceylontoday', 'ceylon today', 'sunday observer', 'daily news',
-        'morning', 'bizenglish', 'bizday', 'lankadeepa', 'divaina',
-        'news.lk', 'pdn.lk', 'adaderana', 'newsfirst.lk',
+    # Explicitly blocked non-SL publishers
+    BLOCKED_PUBLISHERS = {
+        'mexc', 'kelo', 'wtvb', 'newsonair', 'akashvani', 'world socialist',
+        'eurasia review', 'eurasia', 'finimize', 'reuters', 'bloomberg',
+        'wsj', 'wall street', 'financial times', 'the guardian', 'bbc',
+        'cnn', 'fox', 'associated press', 'ap news', 'msn', 'yahoo',
+        'investing.com', 'marketwatch', 'seeking alpha', 'motley fool',
+        'nasdaq', 'coindesk', 'cryptonews', 'decrypt', 'benzinga',
+    }
+
+    # Allowed international publishers (reputable, SL-relevant)
+    ALLOWED_INTERNATIONAL = {
+        'imf', 'world bank', 'reuters', 'bloomberg', 'afp',
     }
 
     # Source groups with quotas
@@ -377,6 +381,15 @@ def fetch_news_feeds(self):
                 if not title or not link:
                     continue
 
+                # Resolve Google News redirect URLs to actual article URLs
+                if is_google_news and 'news.google.com/rss/articles' in link:
+                    try:
+                        r2 = requests.get(link, headers=HEADERS, timeout=5, allow_redirects=True)
+                        if r2.url and 'news.google.com' not in r2.url:
+                            link = r2.url
+                    except Exception:
+                        pass  # Keep original link if resolution fails
+
                 # Determine display source
                 display_source = source_name
                 if is_google_news:
@@ -396,13 +409,14 @@ def fetch_news_feeds(self):
                     if not any(kw in text_check for kw in sl_keywords):
                         continue
 
-                    # Also filter by publisher — skip non-SL outlets
+                    # Block known non-relevant publishers
                     publisher_lower = display_source.lower()
-                    is_sl_publisher = any(p in publisher_lower for p in SL_PUBLISHERS)
-                    # Allow if either publisher is SL or content has strong SL signal
-                    strong_sl = any(kw in text_check for kw in ['sri lanka', 'colombo', 'cbsl', 'lanka'])
-                    if not is_sl_publisher and not strong_sl:
-                        continue
+                    if any(b in publisher_lower for b in BLOCKED_PUBLISHERS):
+                        # Allow Reuters/Bloomberg only if they cover SL monetary policy
+                        is_reputable = any(a in publisher_lower for a in ALLOWED_INTERNATIONAL)
+                        is_policy = any(kw in text_check for kw in ['cbsl', 'central bank', 'policy rate', 'imf'])
+                        if not (is_reputable and is_policy):
+                            continue
                 elif source_name in ('Ada Derana', 'NewsFirst', 'Daily Mirror', 'Colombo Gazette'):
                     # Filter non-economy articles from general sources
                     text_check = (title + ' ' + summary).lower()
@@ -461,7 +475,45 @@ def fetch_news_feeds(self):
                 logger.error(f"Failed to save article: {e}")
         return saved
 
-    # Fetch EconomyNext — min 3 articles
+    # Manually seed latest CBSL press releases (CBSL RSS is often empty)
+    # These are updated manually when new releases are published
+    CBSL_MANUAL = [
+        {
+            'title': 'Monetary Policy Review: No. 03 of 2026 — Policy Rates Increased by 100 basis points',
+            'link': 'https://www.cbsl.gov.lk/en/news/monetary-policy-review-no-03-of-2026',
+            'summary': 'The Monetary Board of the Central Bank of Sri Lanka decided to increase the Standing Deposit Facility Rate (SDFR) and the Standing Lending Facility Rate (SLFR) by 100 basis points, in response to rising inflation driven by fuel price increases.',
+            'source': 'CBSL',
+            'category': 'policy',
+        },
+        {
+            'title': 'Inflation — May 2026: CCPI-based inflation increases to 5.5 percent',
+            'link': 'https://www.cbsl.gov.lk/en/news/inflation-may-2026',
+            'summary': 'The year-on-year change of the Colombo Consumer Price Index (CCPI) increased to 5.5 percent in May 2026 from 5.4 percent in April 2026, reflecting the impact of recent fuel price revisions on transport and food categories.',
+            'source': 'CBSL',
+            'category': 'policy',
+        },
+    ]
+
+    # Save CBSL manual press releases first (always present as fallback)
+    for art in CBSL_MANUAL:
+        if art['link'] not in seen_urls:
+            try:
+                NewsArticle.objects.get_or_create(
+                    source_url=art['link'],
+                    defaults={
+                        'country': lka,
+                        'title': art['title'],
+                        'summary': art['summary'],
+                        'source_name': art['source'],
+                        'published_at': None,
+                        'category': art['category'],
+                    }
+                )
+                seen_urls.add(art['link'])
+                created_count += 1
+            except Exception as e:
+                logger.error(f"Failed to save CBSL manual: {e}")
+
     en_articles = []
     for url, name, cat in FEED_GROUPS['economynext']:
         en_articles += fetch_feed(url, name, cat, is_google_news=False)
