@@ -371,10 +371,17 @@ def fetch_news_feeds(self):
                 # For Google News, extract the real publisher from the source field
                 display_source = source_name
                 if 'Google News' in source_name:
-                    real_source = entry.get('source', {}).get('title', '')
+                    # Google News puts publisher in entry.source.title or at end of title
+                    real_source = (entry.get('source') or {}).get('title', '')
+                    if not real_source:
+                        # Fall back: extract from title " - Publisher" suffix
+                        match = re.search(r'\s+-\s+([\w\s\.]+)$', title)
+                        if match:
+                            real_source = match.group(1).strip()
                     if real_source:
                         display_source = real_source
-                    title = re.sub(r'\s+-\s+[\w\s]+$', '', title).strip()
+                    # Clean publisher suffix from title
+                    title = re.sub(r'\s+-\s+[\w\s\.]+$', '', title).strip()
 
                 published_dt = None
                 if published:
@@ -385,7 +392,7 @@ def fetch_news_feeds(self):
 
                 category = classify_category(title, summary, default_category)
 
-                _, created = NewsArticle.objects.get_or_create(
+                obj, created = NewsArticle.objects.update_or_create(
                     source_url=link,
                     defaults={
                         'country': lka,
