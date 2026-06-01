@@ -354,8 +354,10 @@ def fetch_news_feeds(self):
             text = truncated[:last_period + 1] if last_period > 150 else truncated.rstrip() + '…'
         return text
 
-    def fetch_feed(url, source_name, default_category, is_google_news=False):
-        """Fetch a single RSS feed and return list of article dicts."""
+    def fetch_feed(url, source_name, default_category, is_google_news=False, force_source=None):
+        """Fetch a single RSS feed and return list of article dicts.
+        force_source: if set, override display_source with this value regardless of publisher.
+        """
         articles = []
         try:
             r = requests.get(url, headers=HEADERS, timeout=8)
@@ -422,6 +424,10 @@ def fetch_news_feeds(self):
                     text_check = (title + ' ' + summary).lower()
                     if not any(kw in text_check for kw in econ_keywords):
                         continue
+
+                # Override source name if forced (e.g. CBSL group always shows as CBSL)
+                if force_source:
+                    display_source = force_source
 
                 published_dt = None
                 if published:
@@ -519,10 +525,12 @@ def fetch_news_feeds(self):
         en_articles += fetch_feed(url, name, cat, is_google_news=False)
     save_articles(en_articles, max_count=3, source_group='economynext')
 
-    # Fetch CBSL — mandatory min 2 articles
+    # Fetch CBSL — mandatory min 2 articles, always labelled as CBSL
     cbsl_articles = []
     for url, name, cat in FEED_GROUPS['cbsl']:
-        cbsl_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
+        cbsl_articles += fetch_feed(url, name, cat,
+                                    is_google_news='Google News' in name,
+                                    force_source='CBSL')
     save_articles(cbsl_articles, max_count=2, source_group='cbsl')
 
     # Fetch Island.lk — mandatory min 1 article
