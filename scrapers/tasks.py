@@ -277,6 +277,17 @@ def fetch_news_feeds(self):
         )
     }
 
+    # Known Sri Lankan news publishers — block non-SL sources from Google News
+    SL_PUBLISHERS = {
+        'economynext', 'economy next', 'daily ft', 'ft.lk', 'island.lk', 'the island',
+        'daily mirror', 'ada derana', 'newsfirst', 'colombo gazette', 'the morning',
+        'sunday times', 'cbsl', 'central bank of sri lanka', 'lankabusinessonline',
+        'lbo', 'colombo page', 'colombopage', 'hirunews', 'news radio',
+        'ceylontoday', 'ceylon today', 'sunday observer', 'daily news',
+        'morning', 'bizenglish', 'bizday', 'lankadeepa', 'divaina',
+        'news.lk', 'pdn.lk', 'adaderana', 'newsfirst.lk',
+    }
+
     # Source groups with quotas
     FEED_GROUPS = {
         'economynext': [
@@ -383,6 +394,14 @@ def fetch_news_feeds(self):
                                    'ceylon', 'sinhala', 'sinhalese', 'jaffna', 'kandy']
                     text_check = (title + ' ' + summary).lower()
                     if not any(kw in text_check for kw in sl_keywords):
+                        continue
+
+                    # Also filter by publisher — skip non-SL outlets
+                    publisher_lower = display_source.lower()
+                    is_sl_publisher = any(p in publisher_lower for p in SL_PUBLISHERS)
+                    # Allow if either publisher is SL or content has strong SL signal
+                    strong_sl = any(kw in text_check for kw in ['sri lanka', 'colombo', 'cbsl', 'lanka'])
+                    if not is_sl_publisher and not strong_sl:
                         continue
                 elif source_name in ('Ada Derana', 'NewsFirst', 'Daily Mirror', 'Colombo Gazette'):
                     # Filter non-economy articles from general sources
