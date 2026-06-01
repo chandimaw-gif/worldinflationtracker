@@ -283,18 +283,20 @@ def fetch_news_feeds(self):
             ('https://economynext.com/feed/', 'EconomyNext', 'economy'),
         ],
         'policy': [
-            ('https://news.google.com/rss/search?q=CBSL+central+bank+sri+lanka+policy+rate&hl=en-LK&gl=LK&ceid=LK:en',
+            ('https://news.google.com/rss/search?q="sri+lanka"+CBSL+OR+"central+bank"+OR+"policy+rate"&hl=en-LK&gl=LK&ceid=LK:en',
              'Google News · CBSL', 'policy'),
             ('https://colombogazette.com/feed', 'Colombo Gazette', 'policy'),
         ],
         'markets': [
-            ('https://news.google.com/rss/search?q=sri+lanka+rupee+exchange+rate+LKR&hl=en-LK&gl=LK&ceid=LK:en',
+            ('https://news.google.com/rss/search?q="sri+lanka"+"exchange+rate"+OR+LKR+OR+"rupee"&hl=en-LK&gl=LK&ceid=LK:en',
              'Google News · Markets', 'markets'),
+            ('https://news.google.com/rss/search?q="sri+lanka"+"Daily+FT"+OR+"ft.lk"+economy&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Daily FT', 'markets'),
         ],
         'general': [
-            ('https://news.google.com/rss/search?q=sri+lanka+inflation+ccpi+economy&hl=en-LK&gl=LK&ceid=LK:en',
+            ('https://news.google.com/rss/search?q="sri+lanka"+inflation+OR+CCPI+OR+"cost+of+living"&hl=en-LK&gl=LK&ceid=LK:en',
              'Google News · Economy', 'economy'),
-            ('https://news.google.com/rss/search?q=sri+lanka+fuel+price+food+price&hl=en-LK&gl=LK&ceid=LK:en',
+            ('https://news.google.com/rss/search?q="sri+lanka"+fuel+OR+"food+prices"+OR+"electricity"&hl=en-LK&gl=LK&ceid=LK:en',
              'Google News · Prices', 'economy'),
             ('https://www.adaderana.lk/rss.php', 'Ada Derana', 'economy'),
             ('https://www.dailymirror.lk/rss', 'Daily Mirror', 'economy'),
@@ -370,6 +372,13 @@ def fetch_news_feeds(self):
                     if real_source:
                         display_source = real_source
                     title = re.sub(r'\s+-\s+[\w\s\.]+$', '', title).strip()
+
+                    # Skip non-Sri Lanka articles from Google News
+                    sl_keywords = ['sri lanka', 'lanka', 'colombo', 'cbsl', 'lkr', 'rupee',
+                                   'ceylon', 'sinhala', 'sinhalese', 'jaffna', 'kandy']
+                    text_check = (title + ' ' + summary).lower()
+                    if not any(kw in text_check for kw in sl_keywords):
+                        continue
                 elif source_name in ('Ada Derana', 'NewsFirst', 'Daily Mirror', 'Colombo Gazette'):
                     # Filter non-economy articles from general sources
                     text_check = (title + ' ' + summary).lower()
@@ -432,7 +441,7 @@ def fetch_news_feeds(self):
     en_articles = []
     for url, name, cat in FEED_GROUPS['economynext']:
         en_articles += fetch_feed(url, name, cat, is_google_news=False)
-    save_articles(en_articles, max_count=5, source_group='economynext')
+    save_articles(en_articles, max_count=3, source_group='economynext')
 
     # Fetch policy/CBSL — min 2 articles
     policy_articles = []
