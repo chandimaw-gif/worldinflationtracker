@@ -282,9 +282,14 @@ def fetch_news_feeds(self):
         'economynext': [
             ('https://economynext.com/feed/', 'EconomyNext', 'economy'),
         ],
-        'policy': [
-            ('https://news.google.com/rss/search?q="sri+lanka"+CBSL+OR+"central+bank"+OR+"policy+rate"&hl=en-LK&gl=LK&ceid=LK:en',
+        'cbsl': [
+            ('https://news.google.com/rss/search?q="Central+Bank+of+Sri+Lanka"+OR+"CBSL"&hl=en-LK&gl=LK&ceid=LK:en',
              'Google News · CBSL', 'policy'),
+            ('https://www.cbsl.gov.lk/en/rss-feeds', 'CBSL', 'policy'),
+        ],
+        'policy': [
+            ('https://news.google.com/rss/search?q="sri+lanka"+"policy+rate"+OR+"monetary+policy"+OR+IMF&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Policy', 'policy'),
             ('https://colombogazette.com/feed', 'Colombo Gazette', 'policy'),
         ],
         'markets': [
@@ -443,11 +448,17 @@ def fetch_news_feeds(self):
         en_articles += fetch_feed(url, name, cat, is_google_news=False)
     save_articles(en_articles, max_count=3, source_group='economynext')
 
-    # Fetch policy/CBSL — min 2 articles
+    # Fetch CBSL — mandatory min 2 articles
+    cbsl_articles = []
+    for url, name, cat in FEED_GROUPS['cbsl']:
+        cbsl_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
+    save_articles(cbsl_articles, max_count=2, source_group='cbsl')
+
+    # Fetch policy — min 2 articles
     policy_articles = []
     for url, name, cat in FEED_GROUPS['policy']:
         policy_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
-    save_articles(policy_articles, max_count=4, source_group='policy')
+    save_articles(policy_articles, max_count=2, source_group='policy')
 
     # Fetch markets — min 2 articles
     markets_articles = []
