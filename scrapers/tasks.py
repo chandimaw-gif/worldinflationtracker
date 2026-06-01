@@ -283,25 +283,25 @@ def fetch_news_feeds(self):
             ('https://economynext.com/feed/', 'EconomyNext', 'economy'),
         ],
         'cbsl': [
-            ('https://news.google.com/rss/search?q="Central+Bank+of+Sri+Lanka"+OR+"CBSL"&hl=en-LK&gl=LK&ceid=LK:en',
+            ('https://news.google.com/rss/search?q=CBSL+central+bank+sri+lanka+policy+rate&hl=en-LK&gl=LK&ceid=LK:en',
              'Google News · CBSL', 'policy'),
             ('https://www.cbsl.gov.lk/en/rss-feeds', 'CBSL', 'policy'),
         ],
+        'island': [
+            ('https://news.google.com/rss/search?q=site:island.lk+economy+OR+inflation+OR+cbsl&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Island.lk', 'economy'),
+        ],
         'policy': [
-            ('https://news.google.com/rss/search?q="sri+lanka"+"policy+rate"+OR+"monetary+policy"+OR+IMF&hl=en-LK&gl=LK&ceid=LK:en',
-             'Google News · Policy', 'policy'),
+            ('https://news.google.com/rss/search?q=sri+lanka+inflation+ccpi+economy&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Economy', 'economy'),
             ('https://colombogazette.com/feed', 'Colombo Gazette', 'policy'),
         ],
         'markets': [
-            ('https://news.google.com/rss/search?q="sri+lanka"+"exchange+rate"+OR+LKR+OR+"rupee"&hl=en-LK&gl=LK&ceid=LK:en',
+            ('https://news.google.com/rss/search?q=sri+lanka+rupee+exchange+rate+LKR&hl=en-LK&gl=LK&ceid=LK:en',
              'Google News · Markets', 'markets'),
-            ('https://news.google.com/rss/search?q="sri+lanka"+"Daily+FT"+OR+"ft.lk"+economy&hl=en-LK&gl=LK&ceid=LK:en',
-             'Google News · Daily FT', 'markets'),
         ],
         'general': [
-            ('https://news.google.com/rss/search?q="sri+lanka"+inflation+OR+CCPI+OR+"cost+of+living"&hl=en-LK&gl=LK&ceid=LK:en',
-             'Google News · Economy', 'economy'),
-            ('https://news.google.com/rss/search?q="sri+lanka"+fuel+OR+"food+prices"+OR+"electricity"&hl=en-LK&gl=LK&ceid=LK:en',
+            ('https://news.google.com/rss/search?q=sri+lanka+fuel+price+food+price&hl=en-LK&gl=LK&ceid=LK:en',
              'Google News · Prices', 'economy'),
             ('https://www.adaderana.lk/rss.php', 'Ada Derana', 'economy'),
             ('https://www.dailymirror.lk/rss', 'Daily Mirror', 'economy'),
@@ -453,6 +453,12 @@ def fetch_news_feeds(self):
     for url, name, cat in FEED_GROUPS['cbsl']:
         cbsl_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
     save_articles(cbsl_articles, max_count=2, source_group='cbsl')
+
+    # Fetch Island.lk — mandatory min 1 article
+    island_articles = []
+    for url, name, cat in FEED_GROUPS['island']:
+        island_articles += fetch_feed(url, name, cat, is_google_news=True)
+    save_articles(island_articles, max_count=2, source_group='island')
 
     # Fetch policy — min 2 articles
     policy_articles = []
