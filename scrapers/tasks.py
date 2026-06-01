@@ -252,10 +252,12 @@ def scrape_utility_prices(self):
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def fetch_news_feeds(self):
     """
-    Fetch RSS feeds every 30 minutes.
-    Sources: EconomyNext, Ada Derana, NewsFirst, Daily FT, Daily Mirror,
-             The Morning, Colombo Gazette + CBSL press releases.
-    Classifies articles by category and cleans HTML from summaries.
+    Fetch RSS feeds and enforce a source mix for the 9 homepage cards:
+    - Min 3 from EconomyNext (direct)
+    - Min 2 policy/CBSL articles (Google News CBSL search)
+    - Min 2 markets articles (Google News markets search)
+    - Rest from general Google News economy search
+    Falls back to whatever is available if minimums can't be met.
     """
     import feedparser
     import requests
@@ -266,6 +268,202 @@ def fetch_news_feeds(self):
     from django.utils import timezone
 
     logger.info("Fetching news RSS feeds...")
+
+    HEADERS = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/124.0.0.0 Safari/537.36'
+        )
+    }
+
+    # Source groups with quotas
+    FEED_GROUPS = {
+        'economynext': [
+            ('https://economynext.com/feed/', 'EconomyNext', 'economy'),
+        ],
+        'policy': [
+            ('https://news.google.com/rss/search?q=CBSL+central+bank+sri+lanka+policy+rate&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · CBSL', 'policy'),
+            ('https://colombogazette.com/feed', 'Colombo Gazette', 'policy'),
+        ],
+        'markets': [
+            ('https://news.google.com/rss/search?q=sri+lanka+rupee+exchange+rate+LKR&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Markets', 'markets'),
+        ],
+        'general': [
+            ('https://news.google.com/rss/search?q=sri+lanka+inflation+ccpi+economy&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Economy', 'economy'),
+            ('https://news.google.com/rss/search?q=sri+lanka+fuel+price+food+price&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Prices', 'economy'),
+            ('https://www.adaderana.lk/rss.php', 'Ada Derana', 'economy'),
+            ('https://www.dailymirror.lk/rss', 'Daily Mirror', 'economy'),
+            ('https://www.newsfirst.lk/feed', 'NewsFirst', 'economy'),
+        ],
+    }
+
+    CATEGORY_KEYWORDS = {
+        'policy': ['cbsl', 'central bank', 'policy rate', 'monetary', 'government', 'ministry',
+                   'parliament', 'president', 'imf', 'budget', 'fiscal', 'tax', 'regulation'],
+        'markets': ['exchange rate', 'usd', 'lkr', 'rupee', 'stock', 'cse', 'shares', 'bond',
+                    'forex', 'gold price', 'oil price', 'interest rate', 'treasury'],
+        'international': ['global', 'world', 'china', 'india', 'usa', 'fed', 'ecb', 'opec',
+                          'international', 'export', 'import', 'trade'],
+        'economy': ['inflation', 'cpi', 'ccpi', 'price', 'cost', 'gdp', 'growth', 'economy',
+                    'fuel', 'food', 'electricity', 'gas', 'transport', 'employment'],
+    }
+
+    def classify_category(title, summary, default_cat):
+        text = (title + ' ' + summary).lower()
+        for cat, keywords in CATEGORY_KEYWORDS.items():
+            if any(kw in text for kw in keywords):
+                return cat
+        return default_cat
+
+    def clean_summary(text):
+        if not text:
+            return ''
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = html.unescape(text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        if len(text) > 280:
+            truncated = text[:280]
+            last_period = truncated.rfind('.')
+            text = truncated[:last_period + 1] if last_period > 150 else truncated.rstrip() + '…'
+        return text
+
+    def fetch_feed(url, source_name, default_category, is_google_news=False):
+        """Fetch a single RSS feed and return list of article dicts."""
+        articles = []
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=8)
+            if r.status_code != 200:
+                logger.warning(f"{source_name}: HTTP {r.status_code}")
+                return articles
+            parsed = feedparser.parse(r.text)
+            if not parsed.entries:
+                logger.warning(f"{source_name}: no entries")
+                return articles
+
+            econ_keywords = ['inflation', 'price', 'economy', 'cbsl', 'rupee', 'fuel',
+                             'food', 'cost', 'tax', 'budget', 'imf', 'trade', 'growth',
+                             'gdp', 'interest', 'exchange', 'bank', 'financial', 'market']
+
+            for entry in parsed.entries[:15]:
+                title = entry.get('title', '').strip()
+                link = entry.get('link', '').strip()
+                raw_summary = entry.get('summary', '') or entry.get('description', '')
+                summary = clean_summary(raw_summary)
+                published = entry.get('published_parsed') or entry.get('updated_parsed')
+
+                if not title or not link:
+                    continue
+
+                # Determine display source
+                display_source = source_name
+                if is_google_news:
+                    real_source = (entry.get('source') or {}).get('title', '')
+                    if not real_source:
+                        match = re.search(r'\s+-\s+([\w\s\.]+)$', title)
+                        if match:
+                            real_source = match.group(1).strip()
+                    if real_source:
+                        display_source = real_source
+                    title = re.sub(r'\s+-\s+[\w\s\.]+$', '', title).strip()
+                elif source_name in ('Ada Derana', 'NewsFirst', 'Daily Mirror', 'Colombo Gazette'):
+                    # Filter non-economy articles from general sources
+                    text_check = (title + ' ' + summary).lower()
+                    if not any(kw in text_check for kw in econ_keywords):
+                        continue
+
+                published_dt = None
+                if published:
+                    try:
+                        published_dt = datetime(*published[:6], tzinfo=timezone.get_current_timezone())
+                    except Exception:
+                        pass
+
+                category = classify_category(title, summary, default_category)
+                articles.append({
+                    'title': title,
+                    'link': link,
+                    'summary': summary,
+                    'source': display_source,
+                    'published_dt': published_dt,
+                    'category': category,
+                })
+
+            logger.info(f"{source_name}: processed {len(parsed.entries)} entries → {len(articles)} kept")
+        except Exception as exc:
+            logger.exception(f"Failed to fetch {source_name}")
+        return articles
+
+    # Fetch all groups
+    lka = Country.objects.filter(code='LKA').first()
+    created_count = 0
+    seen_urls = set(NewsArticle.objects.values_list('source_url', flat=True))
+
+    def save_articles(articles, max_count, source_group):
+        nonlocal created_count
+        saved = 0
+        for art in articles:
+            if saved >= max_count:
+                break
+            if art['link'] in seen_urls:
+                continue
+            try:
+                NewsArticle.objects.create(
+                    country=lka,
+                    title=art['title'],
+                    source_url=art['link'],
+                    summary=art['summary'],
+                    source_name=art['source'],
+                    published_at=art['published_dt'],
+                    category=art['category'],
+                )
+                seen_urls.add(art['link'])
+                created_count += 1
+                saved += 1
+            except Exception as e:
+                logger.error(f"Failed to save article: {e}")
+        return saved
+
+    # Fetch EconomyNext — min 3 articles
+    en_articles = []
+    for url, name, cat in FEED_GROUPS['economynext']:
+        en_articles += fetch_feed(url, name, cat, is_google_news=False)
+    save_articles(en_articles, max_count=5, source_group='economynext')
+
+    # Fetch policy/CBSL — min 2 articles
+    policy_articles = []
+    for url, name, cat in FEED_GROUPS['policy']:
+        policy_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
+    save_articles(policy_articles, max_count=4, source_group='policy')
+
+    # Fetch markets — min 2 articles
+    markets_articles = []
+    for url, name, cat in FEED_GROUPS['markets']:
+        markets_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
+    save_articles(markets_articles, max_count=4, source_group='markets')
+
+    # Fetch general — fill remainder
+    general_articles = []
+    for url, name, cat in FEED_GROUPS['general']:
+        general_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
+    save_articles(general_articles, max_count=10, source_group='general')
+
+    # Clean up old articles (keep last 200)
+    try:
+        cutoff_ids = list(
+            NewsArticle.objects.order_by('-published_at').values_list('id', flat=True)[200:]
+        )
+        if cutoff_ids:
+            NewsArticle.objects.filter(id__in=cutoff_ids).delete()
+    except Exception:
+        pass
+
+    logger.info(f"News fetch complete. Created {created_count} new articles.")
+    return f"Created {created_count} new articles."
 
     HEADERS = {
         'User-Agent': (
