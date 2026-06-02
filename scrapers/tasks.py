@@ -98,7 +98,38 @@ def check_gas_prices(self):
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def import_exchange_rates_from_sheet(self):
+def import_sheet_news_task(self):
+    """
+    Daily at 10:30 AM SLT: import curated news from Google Sheet News tab.
+    Sheet articles take priority over RSS articles in the homepage grid.
+    """
+    logger.info("Importing curated news from Google Sheet...")
+    try:
+        from django.core.management import call_command
+        call_command('import_sheet_news')
+        return {'task': 'import_sheet_news_task', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("Sheet news import failed")
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def import_usd_lkr_rate_task(self):
+    """
+    Daily at 10:30 AM SLT: import USD/LKR rate from Google Sheet.
+    Updates the CBSL TT rate displayed on the homepage.
+    """
+    logger.info("Importing USD/LKR rate from Google Sheet...")
+    try:
+        from django.core.management import call_command
+        call_command('import_usd_lkr_rate')
+        return {'task': 'import_usd_lkr_rate_task', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("USD/LKR rate import failed")
+        raise self.retry(exc=exc)
+
+
+
     """
     Daily at 10:30 AM SLT (05:00 UTC): import bank exchange rates
     from the WIT Google Sheet Exchange Rates tab.

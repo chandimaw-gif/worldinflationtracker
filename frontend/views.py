@@ -74,20 +74,37 @@ class HomeView(TemplateView):
         return ctx
 
     def _get_news_context(self, country):
-        """Fetch latest 9 news articles for 3x3 card grid."""
+        """Fetch latest 9 news articles — sheet articles first, then RSS."""
         ctx = {}
-        articles = NewsArticle.objects.filter(
-            country=country
-        ).order_by('-published_at')[:9]
-        # Fallback to global articles if not enough country-specific ones
+
+        # Featured articles from Google Sheet (curated, priority)
+        featured = list(NewsArticle.objects.filter(
+            country=country,
+            is_featured=True,
+        ).order_by('-published_at')[:9])
+
+        # Fill remaining slots with RSS articles
+        remaining = 9 - len(featured)
+        if remaining > 0:
+            featured_ids = [a.id for a in featured]
+            rss_articles = list(NewsArticle.objects.filter(
+                country=country,
+                is_featured=False,
+            ).exclude(
+                id__in=featured_ids
+            ).order_by('-published_at')[:remaining])
+            articles = featured + rss_articles
+        else:
+            articles = featured
+
+        # Fallback to global articles if still not enough
         if len(articles) < 9:
             existing_ids = [a.id for a in articles]
-            global_articles = NewsArticle.objects.filter(
+            global_articles = list(NewsArticle.objects.filter(
                 country__isnull=True
-            ).exclude(
-                id__in=existing_ids
-            ).order_by('-published_at')[:9 - len(articles)]
-            articles = list(articles) + list(global_articles)
+            ).exclude(id__in=existing_ids).order_by('-published_at')[:9 - len(articles)])
+            articles = articles + global_articles
+
         ctx['news_articles'] = articles
         return ctx
 

@@ -238,3 +238,10 @@ LOGGING = {
         },
     },
 }
+
+# Google Sheet CSV URLs
+SHEET_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSE_6nH-_hbGILUwWNJ3R89MWgSRAwSPU0eYlABobvV8VvR2qbkiUVxCXoImuGHx29J_dIpRH3InXnb/pub'
+EXCHANGE_RATES_SHEET_CSV_URL = SHEET_BASE + '?gid=314532917&single=true&output=csv'
+PRICE_SHEET_CSV_URL = SHEET_BASE + '?gid=2029087421&single=true&output=csv'
+NEWS_SHEET_CSV_URL = SHEET_BASE + '?gid=845580084&single=true&output=csv'
+USD_LKR_SHEET_CSV_URL = SHEET_BASE + '?gid=31393083&single=true&output=csv'
