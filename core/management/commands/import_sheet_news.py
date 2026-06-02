@@ -127,11 +127,33 @@ class Command(BaseCommand):
             source_name = clean_source_name(source_raw)
             category = classify_category(headline, synopsis)
 
-            # Parse date
+            # Clean special characters that MySQL latin1 columns reject
+            def clean_text(text):
+                if not text:
+                    return text
+                # Replace smart quotes and em-dashes with ASCII equivalents
+                replacements = {
+                    '\u2018': "'", '\u2019': "'",  # smart single quotes
+                    '\u201c': '"', '\u201d': '"',  # smart double quotes
+                    '\u2013': '-', '\u2014': '-',  # en-dash, em-dash
+                    '\u2026': '...', '\u00a0': ' ', # ellipsis, non-breaking space
+                }
+                for old, new in replacements.items():
+                    text = text.replace(old, new)
+                # Strip any remaining non-ASCII characters
+                return text.encode('ascii', 'ignore').decode('ascii')
+
+            headline = clean_text(headline)
+            synopsis = clean_text(synopsis)
+            source_name = clean_text(source_name)
+
+            # Parse date — make timezone-aware
             published_dt = None
+            from django.utils import timezone as tz
             for fmt in ['%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y', '%m/%d/%Y']:
                 try:
-                    published_dt = datetime.strptime(date_str, fmt)
+                    naive = datetime.strptime(date_str, fmt)
+                    published_dt = tz.make_aware(naive)
                     break
                 except ValueError:
                     pass
