@@ -116,10 +116,11 @@ class Command(BaseCommand):
 
             ExchangeRate.objects.update_or_create(
                 country=country,
-                currency='USD',
+                base_currency='USD',
                 rate_date=rate_date,
                 defaults={
                     'rate': rate_value,
+                    'local_currency': 'LKR',
                     'source': 'CBSL TT (Google Sheet)',
                 }
             )
