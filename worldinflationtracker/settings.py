@@ -150,6 +150,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'scrapers.tasks.compute_monthly_cpi',
         'schedule': 'crontab(day_of_month=2, hour=3, minute=0)',
     },
+    # Fetch YouTube videos daily at 11:00 AM SLT (05:30 UTC)
+    'fetch-youtube-videos-daily': {
+        'task': 'scrapers.tasks.fetch_youtube_videos_task',
+        'schedule': 'crontab(hour=5, minute=30)',
+    },
     # Google Sheet imports — run after Apps Script updates
     # Apps Script updates exchange rates at 10:00 AM SLT (04:30 UTC)
     # We import at 10:30 AM SLT (05:00 UTC) — 30 min buffer
