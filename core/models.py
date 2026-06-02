@@ -311,3 +311,33 @@ class BankExchangeRate(models.Model):
 
     def __str__(self):
         return f"{self.bank_name} {self.currency} @ {self.rate_date}: Buy {self.buying_rate} / Sell {self.selling_rate}"
+
+
+class YouTubeVideo(models.Model):
+    """YouTube videos about Sri Lanka economy/inflation for homepage display."""
+    country = models.ForeignKey(Country, on_delete=models.CASCADE,
+                                related_name='youtube_videos')
+    video_id = models.CharField(max_length=20, unique=True)
+    title = models.CharField(max_length=500)
+    channel_name = models.CharField(max_length=200)
+    thumbnail_url = models.URLField(max_length=500, blank=True)
+    description = models.TextField(blank=True)
+    view_count = models.BigIntegerField(default=0)
+    published_at = models.DateTimeField(null=True, blank=True)
+    display_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "YouTube Videos"
+        ordering = ['display_order', '-view_count']
+
+    def __str__(self):
+        return f"{self.title[:60]} ({self.channel_name})"
+
+    @property
+    def youtube_url(self):
+        return f"https://www.youtube.com/watch?v={self.video_id}"
+
+    @property
+    def embed_url(self):
+        return f"https://www.youtube.com/embed/{self.video_id}"

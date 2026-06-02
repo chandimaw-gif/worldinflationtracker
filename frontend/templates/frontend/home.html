@@ -241,6 +241,42 @@
         </div>
         {% endif %}
     </section>
+
+    {% if youtube_videos %}
+    <section class="youtube-section">
+        <div class="youtube-section-header">
+            <h2>🎬 Economy & Inflation Videos</h2>
+            <a href="https://www.youtube.com/results?search_query=sri+lanka+inflation+economy"
+               target="_blank" rel="noopener noreferrer" class="youtube-view-all">
+               View more on YouTube →
+            </a>
+        </div>
+        <div class="youtube-grid">
+            {% for video in youtube_videos %}
+            <a href="{{ video.youtube_url }}" target="_blank" rel="noopener noreferrer"
+               class="youtube-card">
+                <div class="youtube-thumb">
+                    {% if video.thumbnail_url %}
+                    <img src="{{ video.thumbnail_url }}" alt="{{ video.title }}" loading="lazy">
+                    {% else %}
+                    <div class="youtube-thumb-placeholder"></div>
+                    {% endif %}
+                    <div class="youtube-play-btn">
+                        <svg viewBox="0 0 24 24" fill="white" width="36" height="36">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="youtube-info">
+                    <p class="youtube-title">{{ video.title }}</p>
+                    <p class="youtube-meta">{{ video.channel_name }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
 </div>
 {% endblock %}
 

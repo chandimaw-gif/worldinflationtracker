@@ -97,8 +97,20 @@ def check_gas_prices(self):
     return {'task': 'check_gas_prices', 'results': results}
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def import_sheet_news_task(self):
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def fetch_youtube_videos_task(self):
+    """Weekly: fetch YouTube videos about Sri Lanka economy/inflation."""
+    logger.info("Fetching YouTube videos...")
+    try:
+        from django.core.management import call_command
+        call_command('fetch_youtube_videos')
+        return {'task': 'fetch_youtube_videos_task', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("YouTube fetch failed")
+        raise self.retry(exc=exc)
+
+
+
     """
     Daily at 10:30 AM SLT: import curated news from Google Sheet News tab.
     Sheet articles take priority over RSS articles in the homepage grid.

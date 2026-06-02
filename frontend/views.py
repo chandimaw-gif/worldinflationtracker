@@ -6,7 +6,7 @@ from django.views.generic import TemplateView, ListView
 from django.shortcuts import get_object_or_404
 from dateutil.relativedelta import relativedelta
 
-from core.models import Country, PriceObservation, NewsArticle, ExchangeRate, CPIIndex, ProductGroup, BasketItem
+from core.models import Country, PriceObservation, NewsArticle, ExchangeRate, CPIIndex, ProductGroup, BasketItem, YouTubeVideo
 from cpi_engine.calculations import compute_cpi, compute_inflation_rates
 
 
@@ -30,6 +30,9 @@ class HomeView(TemplateView):
             context.update(self._get_exchange_rate_context(country))
             context.update(self._get_news_context(country))
             context.update(self._get_chart_context(country))
+            context['youtube_videos'] = YouTubeVideo.objects.filter(
+                country=country
+            ).order_by('display_order')[:6]
 
         return context
 
