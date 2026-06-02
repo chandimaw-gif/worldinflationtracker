@@ -97,14 +97,29 @@ class Command(BaseCommand):
         updated = 0
 
         for row in rows[1:]:  # Skip header
-            if len(row) < 5:
+            if not row or not row[0].strip():
                 continue
 
-            date_str = row[0].strip()
-            source_raw = row[1].strip()
-            headline = row[2].strip()
-            synopsis = row[3].strip()
-            link = row[4].strip()
+            # Handle two formats:
+            # 1. Proper CSV: Date | Source | Headline | Synopsis | Link (5 cols)
+            # 2. Tab-separated in single cell: "Date\tSource\tHeadline\tSynopsis\tLink"
+            if len(row) >= 5 and row[1].strip():
+                # Proper separate columns
+                cols = row
+            elif '\t' in row[0]:
+                # All data tab-separated in first cell
+                cols = row[0].split('\t')
+            else:
+                continue
+
+            if len(cols) < 5:
+                continue
+
+            date_str = cols[0].strip()
+            source_raw = cols[1].strip()
+            headline = cols[2].strip()
+            synopsis = cols[3].strip()
+            link = cols[4].strip()
 
             if not headline or not link:
                 continue
