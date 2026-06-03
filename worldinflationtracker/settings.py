@@ -209,10 +209,19 @@ CORS_ALLOWED_ORIGINS = [
 GOOGLE_ADSENSE_PUBLISHER_ID = env('GOOGLE_ADSENSE_PUBLISHER_ID', default='pub-2187016535602304')
 GOOGLE_ADSENSE_ENABLED = env.bool('GOOGLE_ADSENSE_ENABLED', default=True)
 GOOGLE_ADSENSE_SLOTS = {
-    'homepage_banner': '7692574175',   # WIT Homepage Banner — between chart and news
-    'sidebar': '8814084150',           # WIT Sidebar — analysis page
-    'news_footer': '2248675805',       # WIT News Footer — below news section
+    'homepage_banner': '7692574175',
+    'sidebar': '8814084150',
+    'news_footer': '2248675805',
 }
+
+# YouTube API
+YOUTUBE_API_KEY = env('YOUTUBE_API_KEY', default='')
+
+# Google Sheet CSV URLs
+EXCHANGE_RATES_SHEET_CSV_URL = env('EXCHANGE_RATES_SHEET_CSV_URL', default='')
+PRICE_SHEET_CSV_URL = env('PRICE_SHEET_CSV_URL', default='')
+NEWS_SHEET_CSV_URL = env('NEWS_SHEET_CSV_URL', default='')
+USD_LKR_SHEET_CSV_URL = env('USD_LKR_SHEET_CSV_URL', default='')
 
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/admin/'
