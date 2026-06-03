@@ -1,2 +1,1 @@
-# AdSense ads.txt - Replace with your actual publisher ID
-# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+google.com, pub-2187016535602304, DIRECT, f08c47fec0942fa0
