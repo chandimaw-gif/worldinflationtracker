@@ -90,7 +90,7 @@
             </div>
         </div>
 
-        {% if not headline_cpi and not core_cpi and not food_cpi %}
+        {% if not official_ccpi and not official_core_ccpi %}
         <div class="widget" style="text-align:center;">
             <p class="no-data">CPI data is being computed from collected price observations. Check back shortly, or visit the <a href="{% url 'price-log' %}">Price Log</a> to see raw data.</p>
         </div>
