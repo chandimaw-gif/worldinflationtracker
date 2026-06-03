@@ -206,9 +206,13 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # Google AdSense configuration
-# Replace with your actual publisher ID after AdSense approval
 GOOGLE_ADSENSE_PUBLISHER_ID = env('GOOGLE_ADSENSE_PUBLISHER_ID', default='pub-2187016535602304')
 GOOGLE_ADSENSE_ENABLED = env.bool('GOOGLE_ADSENSE_ENABLED', default=True)
+GOOGLE_ADSENSE_SLOTS = {
+    'homepage_banner': '7692574175',   # WIT Homepage Banner — between chart and news
+    'sidebar': '8814084150',           # WIT Sidebar — analysis page
+    'news_footer': '2248675805',       # WIT News Footer — below news section
+}
 
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/admin/'

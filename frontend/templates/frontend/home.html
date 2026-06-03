@@ -102,7 +102,7 @@
             <ins class="adsbygoogle"
                  style="display:block"
                  data-ad-client="ca-{{ adsense.publisher_id }}"
-                 data-ad-slot="INCONTENT_SLOT_ID"
+                 data-ad-slot="{{ adsense.slots.homepage_banner }}"
                  data-ad-format="auto"
                  data-full-width-responsive="true"></ins>
             <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
@@ -241,6 +241,19 @@
         </div>
         {% endif %}
     </section>
+
+    {% if adsense.enabled %}
+    <div class="ad-container ad-news-footer">
+        <div class="ad-label">Advertisement</div>
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-{{ adsense.publisher_id }}"
+             data-ad-slot="{{ adsense.slots.news_footer }}"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+    {% endif %}
 
     {% if youtube_videos %}
     <section class="youtube-section">

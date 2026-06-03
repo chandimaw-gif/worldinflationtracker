@@ -16,5 +16,6 @@ def site_context(request):
     context['adsense'] = {
         'enabled': getattr(settings, 'GOOGLE_ADSENSE_ENABLED', False),
         'publisher_id': getattr(settings, 'GOOGLE_ADSENSE_PUBLISHER_ID', 'pub-XXXXXXXXXXXXXXXX'),
+        'slots': getattr(settings, 'GOOGLE_ADSENSE_SLOTS', {}),
     }
     return context
