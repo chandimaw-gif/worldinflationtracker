@@ -1,0 +1,26 @@
+# World Inflation Tracker — Cloudways crontab (master_pnjkjbpsxn)
+# Times are in UTC; add +5:30 for Sri Lanka local time.
+#
+# Install with: crontab -e  (paste the lines below, excluding comments if desired)
+
+# Reboot: start Gunicorn
+@reboot /home/master/applications/ctaaqxskeb/public_html/startup.sh
+
+# Every 5 minutes: watchdog restart Gunicorn if unresponsive
+*/5 * * * * /home/master/applications/ctaaqxskeb/public_html/watchdog_gunicorn.sh
+
+# Daily at 00:30 UTC (06:00 AM SLT): configured source scraper (Spar, CEYPETCO, Keells)
+30 0 * * * cd /home/master/applications/ctaaqxskeb/public_html && /usr/bin/python3 manage.py scrape_configured_sources --country LKA >> /tmp/scrape_configured_sources.log 2>&1
+
+# Monthly on the 2nd at 01:30 UTC (07:00 AM SLT): compute CPI
+30 1 2 * * cd /home/master/applications/ctaaqxskeb/public_html && /usr/bin/python3 manage.py compute_cpi --country LKA --force >> /tmp/compute_cpi.log 2>&1
+
+# USD/LKR CBSL TT Selling rate from Google Sheet (3x daily)
+# 04:30 UTC = 10:00 AM SLT, 06:30 UTC = 12:00 PM SLT, 09:30 UTC = 03:00 PM SLT
+30 4/6/9 * * * cd /home/master/applications/ctaaqxskeb/public_html && /usr/bin/python3 manage.py import_usd_lkr_rate >> /tmp/import_usd_lkr_rate.log 2>&1
+
+# Bank exchange rates from Google Sheet (05:00 UTC = 10:30 AM SLT)
+0 5 * * * cd /home/master/applications/ctaaqxskeb/public_html && /usr/bin/python3 manage.py import_google_sheet_rates >> /tmp/import_google_sheet_rates.log 2>&1
+
+# Curated news from Google Sheet (05:30 UTC = 11:00 AM SLT)
+30 5 * * * cd /home/master/applications/ctaaqxskeb/public_html && /usr/bin/python3 manage.py import_sheet_news >> /tmp/import_sheet_news.log 2>&1

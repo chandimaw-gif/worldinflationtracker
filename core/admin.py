@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Country, ProductGroup, BasketItem, PriceObservation,
     CPIIndex, ExchangeRate, NewsArticle, ScrapeLog,
-    AdPlacement, PriceAuditLog
+    AdPlacement, PriceAuditLog, ScrapeSource
 )
 
 
@@ -57,6 +57,17 @@ class NewsArticleAdmin(admin.ModelAdmin):
     list_filter = ['category', 'is_featured', 'source_name']
     search_fields = ['title', 'summary']
     date_hierarchy = 'published_at'
+
+
+@admin.register(ScrapeSource)
+class ScrapeSourceAdmin(admin.ModelAdmin):
+    list_display = [
+        'source_name', 'item', 'selector_type', 'requires_js',
+        'is_active', 'scrape_frequency', 'last_price', 'last_status', 'last_scraped_at'
+    ]
+    list_filter = ['selector_type', 'requires_js', 'is_active', 'scrape_frequency', 'item__country']
+    search_fields = ['source_name', 'item__name', 'url']
+    readonly_fields = ['last_price', 'last_status', 'last_error', 'last_scraped_at', 'created_at']
 
 
 @admin.register(ScrapeLog)
