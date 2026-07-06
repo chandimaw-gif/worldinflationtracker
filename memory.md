@@ -28,3 +28,20 @@
 
 - Always read `agents.md` and `memory.md` when a new context window starts.
 - Append to these files; never overwrite.
+
+## Deployment Status — 2026-07-06
+
+- Server deploy completed.
+- `scrape_configured_sources` is live and saved real prices:
+  - Spar: chicken 1500, coconut oil 1310, dhal 332, eggs 57.50 (per egg), milk powder 1146 (400g eq), sugar 248, tea 580
+  - CEYPETCO: auto diesel 382, petrol 92 414, petrol 95 495
+
+## Blocker
+
+- Keells scraper (Playwright) cannot start until system browser deps are installed on Cloudways.
+- Command that would need to run (with sudo): `playwright install-deps chromium` or apt install the listed libs.
+
+## Files Updated
+
+- `agents.md` and `memory.md` now contain SSH key and port 8000 rules.
+- `crontab.txt` and `DEPLOY.md` are in the repo.
