@@ -277,8 +277,29 @@ class Command(BaseCommand):
         parser.add_argument('--source', type=str, help='Filter by source name substring')
         parser.add_argument('--item', type=str, help='Filter by item name substring')
         parser.add_argument('--dry-run', action='store_true', help='Do not save prices')
-        parser.add_argument('--force', action='store_true', help='Overwrite existing observations for today')
+        parser.add_argument('--force', action='store_true', help='Overwrite existing observations for today and ignore schedule')
         parser.add_argument('--limit', type=int, help='Limit number of sources to scrape')
+
+    def _should_run_today(self, source):
+        """Return True if the source's schedule says it should run today."""
+        from datetime import datetime
+        today = date.today()
+        weekday = today.weekday()
+        day_of_month = today.day
+
+        if source.scrape_frequency == 'daily':
+            return True
+        if source.scrape_frequency == 'weekly':
+            target_day = source.scrape_day_of_week
+            return target_day is None or target_day == weekday
+        if source.scrape_frequency == 'monthly':
+            target_day = source.scrape_day_of_month or 1
+            return day_of_month == target_day
+        if source.scrape_frequency == 'quarterly':
+            return day_of_month == 1 and today.month in (1, 4, 7, 10)
+        if source.scrape_frequency == 'annual':
+            return day_of_month == 1 and today.month == 1
+        return True
 
     def handle(self, *args, **options):
         try:
@@ -294,7 +315,11 @@ class Command(BaseCommand):
         if options.get('item'):
             qs = qs.filter(item__name__icontains=options['item'])
 
-        total = qs.count()
+        if not options.get('force'):
+            qs = [s for s in qs if self._should_run_today(s)]
+            total = len(qs)
+        else:
+            total = qs.count()
         if total == 0:
             self.stdout.write(self.style.WARNING("No active scrape sources found"))
             return

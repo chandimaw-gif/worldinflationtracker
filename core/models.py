@@ -239,6 +239,17 @@ class ScrapeSource(models.Model):
         choices=BasketItem.SCRAPE_FREQUENCY_CHOICES,
         default='daily'
     )
+    scrape_day_of_week = models.IntegerField(
+        null=True, blank=True,
+        choices=[(0, 'Monday'), (1, 'Tuesday'), (2, 'Wednesday'), (3, 'Thursday'),
+                 (4, 'Friday'), (5, 'Saturday'), (6, 'Sunday')],
+        help_text="For weekly frequency: which day of the week (0=Monday). Leave blank for any day."
+    )
+    scrape_day_of_month = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(31)],
+        help_text="For monthly frequency: which day of the month (1-31). Leave blank for 1st."
+    )
     notes = models.TextField(blank=True, help_text="Any notes about this source")
 
     # Tracking fields
@@ -399,3 +410,61 @@ class YouTubeVideo(models.Model):
     @property
     def embed_url(self):
         return f"https://www.youtube.com/embed/{self.video_id}"
+
+
+class YouTubeSource(models.Model):
+    """
+    Configurable source for fetching YouTube videos about Sri Lanka economy/inflation.
+    Admins can add search queries or channel IDs and set refresh frequency.
+    """
+
+    FREQUENCY_CHOICES = [
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+
+    SOURCE_TYPE_CHOICES = [
+        ('search', 'Search Query'),
+        ('channel', 'Channel ID'),
+    ]
+
+    country = models.ForeignKey(
+        Country, on_delete=models.CASCADE, related_name='youtube_sources'
+    )
+    name = models.CharField(max_length=200, help_text="Human-readable label")
+    source_type = models.CharField(
+        max_length=20, choices=SOURCE_TYPE_CHOICES, default='search'
+    )
+    query = models.CharField(
+        max_length=500,
+        help_text="YouTube search query or channel ID (for channel uploads)"
+    )
+    max_results = models.PositiveIntegerField(default=5, help_text="Max videos to fetch from this source")
+    refresh_frequency = models.CharField(
+        max_length=20, choices=FREQUENCY_CHOICES, default='daily'
+    )
+    refresh_day_of_week = models.IntegerField(
+        null=True, blank=True,
+        choices=[(0, 'Monday'), (1, 'Tuesday'), (2, 'Wednesday'), (3, 'Thursday'),
+                 (4, 'Friday'), (5, 'Saturday'), (6, 'Sunday')],
+        help_text="For weekly frequency: which day of the week (0=Monday). Leave blank for any day."
+    )
+    refresh_day_of_month = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(31)],
+        help_text="For monthly frequency: which day of the month (1-31). Leave blank for 1st."
+    )
+    is_active = models.BooleanField(default=True)
+    last_fetched_at = models.DateTimeField(null=True, blank=True)
+    last_status = models.CharField(max_length=20, blank=True)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "YouTube Sources"
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_source_type_display()})"
