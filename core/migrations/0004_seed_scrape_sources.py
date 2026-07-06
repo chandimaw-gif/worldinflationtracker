@@ -174,7 +174,7 @@ def reverse_seed(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0002_scrapesource'),
+        ('core', '0003_scrapesource'),
     ]
 
     operations = [
