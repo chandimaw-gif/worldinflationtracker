@@ -155,6 +155,24 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'scrapers.tasks.compute_monthly_cpi',
         'schedule': 'crontab(day_of_month=2, hour=3, minute=0)',
     },
+    # Fetch YouTube videos daily at 11:00 AM SLT (05:30 UTC)
+    'fetch-youtube-videos-daily': {
+        'task': 'scrapers.tasks.fetch_youtube_videos_task',
+        'schedule': 'crontab(hour=5, minute=30)',
+    },
+    # Google Sheet imports — run after Apps Script updates
+    # Apps Script updates exchange rates at 10:00 AM SLT (04:30 UTC)
+    # We import at 10:30 AM SLT (05:00 UTC) — 30 min buffer
+    'import-exchange-rates-from-sheet': {
+        'task': 'scrapers.tasks.import_exchange_rates_from_sheet',
+        'schedule': 'crontab(hour=5, minute=0)',
+    },
+    # Apps Script updates prices on 1st of month at 12:00 noon SLT (06:30 UTC)
+    # We import at 12:30 PM SLT (07:00 UTC) — 30 min buffer
+    'import-wit-prices-from-sheet': {
+        'task': 'scrapers.tasks.import_wit_prices_from_sheet',
+        'schedule': 'crontab(day_of_month=1, hour=7, minute=0)',
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -193,9 +211,22 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # Google AdSense configuration
-# Replace with your actual publisher ID after AdSense approval
 GOOGLE_ADSENSE_PUBLISHER_ID = env('GOOGLE_ADSENSE_PUBLISHER_ID', default='pub-2187016535602304')
 GOOGLE_ADSENSE_ENABLED = env.bool('GOOGLE_ADSENSE_ENABLED', default=True)
+GOOGLE_ADSENSE_SLOTS = {
+    'homepage_banner': '7692574175',
+    'sidebar': '8814084150',
+    'news_footer': '2248675805',
+}
+
+# YouTube API
+YOUTUBE_API_KEY = env('YOUTUBE_API_KEY', default='')
+
+# Google Sheet CSV URLs
+EXCHANGE_RATES_SHEET_CSV_URL = env('EXCHANGE_RATES_SHEET_CSV_URL', default='')
+PRICE_SHEET_CSV_URL = env('PRICE_SHEET_CSV_URL', default='')
+NEWS_SHEET_CSV_URL = env('NEWS_SHEET_CSV_URL', default='')
+USD_LKR_SHEET_CSV_URL = env('USD_LKR_SHEET_CSV_URL', default='')
 
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/admin/'
@@ -230,3 +261,10 @@ LOGGING = {
         },
     },
 }
+
+# Google Sheet CSV URLs
+SHEET_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSE_6nH-_hbGILUwWNJ3R89MWgSRAwSPU0eYlABobvV8VvR2qbkiUVxCXoImuGHx29J_dIpRH3InXnb/pub'
+EXCHANGE_RATES_SHEET_CSV_URL = SHEET_BASE + '?gid=314532917&single=true&output=csv'
+PRICE_SHEET_CSV_URL = SHEET_BASE + '?gid=2029087421&single=true&output=csv'
+NEWS_SHEET_CSV_URL = SHEET_BASE + '?gid=845580084&single=true&output=csv'
+USD_LKR_SHEET_CSV_URL = SHEET_BASE + '?gid=31393083&single=true&output=csv'

@@ -6,7 +6,7 @@ from django.views.generic import TemplateView, ListView
 from django.shortcuts import get_object_or_404
 from dateutil.relativedelta import relativedelta
 
-from core.models import Country, PriceObservation, NewsArticle, ExchangeRate, CPIIndex, ProductGroup, BasketItem
+from core.models import Country, PriceObservation, NewsArticle, ExchangeRate, CPIIndex, ProductGroup, BasketItem, YouTubeVideo
 from cpi_engine.calculations import compute_cpi, compute_inflation_rates
 
 
@@ -30,39 +30,39 @@ class HomeView(TemplateView):
             context.update(self._get_exchange_rate_context(country))
             context.update(self._get_news_context(country))
             context.update(self._get_chart_context(country))
+            context['youtube_videos'] = YouTubeVideo.objects.filter(
+                country=country
+            ).order_by('display_order')[:6]
 
         return context
 
     def _get_cpi_context(self, country):
-        """Fetch latest CPI indices with YoY changes."""
+        """Fetch latest official CBSL CCPI data for the stat cards."""
         ctx = {}
-        today = date.today()
-        period_end = date(today.year, today.month, 1)
 
-        for idx_type in ['headline', 'core', 'food']:
-            # Try stored CPIIndex first
-            latest = CPIIndex.objects.filter(
-                country=country,
-                index_type=idx_type,
-                group__isnull=True
-            ).order_by('-period_date').first()
+        # Official headline CCPI (primary source — CBSL/DCS)
+        official = CPIIndex.objects.filter(
+            country=country,
+            index_type='official_ccpi',
+            group__isnull=True,
+        ).order_by('-period_date').first()
+        ctx['official_ccpi'] = official
 
-            if latest:
-                ctx[f'{idx_type}_cpi'] = latest
-            else:
-                # Fallback: compute on-the-fly for current month
-                index_value = compute_cpi(country, period_end, index_type=idx_type)
-                if index_value is not None:
-                    yoy, mom, ma12 = compute_inflation_rates(country, period_end, index_type=idx_type)
-                    ctx[f'{idx_type}_cpi'] = {
-                        'index_value': index_value,
-                        'yoy_inflation': yoy,
-                        'mom_inflation': mom,
-                        'period_date': period_end,
-                        '_computed_on_the_fly': True,
-                    }
-                else:
-                    ctx[f'{idx_type}_cpi'] = None
+        # Official core CCPI
+        official_core = CPIIndex.objects.filter(
+            country=country,
+            index_type='official_core_ccpi',
+            group__isnull=True,
+        ).order_by('-period_date').first()
+        ctx['official_core_ccpi'] = official_core
+
+        # WIT's own calculated CPI (for comparison — shown separately)
+        wit_headline = CPIIndex.objects.filter(
+            country=country,
+            index_type='headline',
+            group__isnull=True,
+        ).order_by('-period_date').first()
+        ctx['wit_headline_cpi'] = wit_headline
 
         return ctx
 
@@ -77,61 +77,106 @@ class HomeView(TemplateView):
         return ctx
 
     def _get_news_context(self, country):
-        """Fetch latest news articles."""
+        """Fetch latest 9 news articles — sheet articles first, then RSS."""
         ctx = {}
-        articles = NewsArticle.objects.filter(
-            country=country
-        ).order_by('-published_at')[:6]
-        # Also include global news (no country assigned)
-        if articles.count() < 6:
-            global_articles = NewsArticle.objects.filter(
+
+        # Featured articles from Google Sheet (curated, priority)
+        featured = list(NewsArticle.objects.filter(
+            country=country,
+            is_featured=True,
+        ).order_by('-published_at')[:9])
+
+        # Fill remaining slots with RSS articles
+        remaining = 9 - len(featured)
+        if remaining > 0:
+            featured_ids = [a.id for a in featured]
+            rss_articles = list(NewsArticle.objects.filter(
+                country=country,
+                is_featured=False,
+            ).exclude(
+                id__in=featured_ids
+            ).order_by('-published_at')[:remaining])
+            articles = featured + rss_articles
+        else:
+            articles = featured
+
+        # Fallback to global articles if still not enough
+        if len(articles) < 9:
+            existing_ids = [a.id for a in articles]
+            global_articles = list(NewsArticle.objects.filter(
                 country__isnull=True
-            ).order_by('-published_at')[:6 - articles.count()]
-            articles = list(articles) + list(global_articles)
+            ).exclude(id__in=existing_ids).order_by('-published_at')[:9 - len(articles)])
+            articles = articles + global_articles
+
         ctx['news_articles'] = articles
         return ctx
 
     def _get_chart_context(self, country):
-        """Build chart data for the last 24 months of CPI."""
+        """Build chart data using official CBSL CCPI data (2022–present)."""
         ctx = {}
-        end_date = date.today()
-        start_date = end_date - relativedelta(months=23)
 
-        # Build a list of month-end dates
-        months = []
-        current = date(start_date.year, start_date.month, 1)
-        while current <= end_date:
-            import calendar
-            last_day = calendar.monthrange(current.year, current.month)[1]
-            months.append(date(current.year, current.month, last_day))
-            current += relativedelta(months=1)
+        # Fetch all official CCPI records ordered chronologically
+        official_qs = CPIIndex.objects.filter(
+            country=country,
+            index_type='official_ccpi',
+            group__isnull=True,
+        ).order_by('period_date')
+
+        core_qs = CPIIndex.objects.filter(
+            country=country,
+            index_type='official_core_ccpi',
+            group__isnull=True,
+        ).order_by('period_date')
+
+        # Build lookup dicts: (year, month) → record
+        official_by_month = {
+            (r.period_date.year, r.period_date.month): r
+            for r in official_qs
+        }
+        core_by_month = {
+            (r.period_date.year, r.period_date.month): r
+            for r in core_qs
+        }
+        wit_by_month = {
+            (r.period_date.year, r.period_date.month): r
+            for r in CPIIndex.objects.filter(
+                country=country,
+                index_type='headline',
+                group__isnull=True,
+            )
+        }
+
+        # Build unified month list spanning all available data
+        all_months = sorted(set(official_by_month.keys()) | set(core_by_month.keys()))
 
         chart_data = {
             'labels': [],
-            'headline': [],
-            'core': [],
-            'food': [],
+            'official_ccpi': [],
+            'official_core_ccpi': [],
+            'official_yoy': [],
+            'official_core_yoy': [],
+            'wit_ccpi': [],
         }
 
-        for m in months:
-            label = m.strftime('%b %Y')
+        for yr, mo in all_months:
+            import calendar
+            label = date(yr, mo, 1).strftime('%b %Y')
             chart_data['labels'].append(label)
 
-            for idx_type in ['headline', 'core', 'food']:
-                cpi = CPIIndex.objects.filter(
-                    country=country,
-                    index_type=idx_type,
-                    group__isnull=True,
-                    period_date__year=m.year,
-                    period_date__month=m.month
-                ).order_by('-period_date').first()
+            rec = official_by_month.get((yr, mo))
+            chart_data['official_ccpi'].append(float(rec.index_value) if rec else None)
+            chart_data['official_yoy'].append(
+                float(rec.yoy_inflation) if rec and rec.yoy_inflation is not None else None
+            )
 
-                if cpi:
-                    chart_data[idx_type].append(float(cpi.index_value))
-                else:
-                    # Try to compute on-the-fly
-                    val = compute_cpi(country, m, index_type=idx_type)
-                    chart_data[idx_type].append(float(val) if val else None)
+            core = core_by_month.get((yr, mo))
+            chart_data['official_core_ccpi'].append(float(core.index_value) if core else None)
+            chart_data['official_core_yoy'].append(
+                float(core.yoy_inflation) if core and core.yoy_inflation is not None else None
+            )
+
+            wit = wit_by_month.get((yr, mo))
+            chart_data['wit_ccpi'].append(float(wit.index_value) if wit else None)
 
         ctx['chart_data_json'] = json.dumps(chart_data)
         return ctx
@@ -238,24 +283,42 @@ class ExchangeRateView(TemplateView):
 
     def _get_bank_comparison(self, country_code, today):
         from core.models import BankExchangeRate
-        # Get latest rates for each bank-currency combo
-        currencies = ['USD', 'GBP', 'EUR']
-        # Commercial Bank and NDB have working scrapers
-        banks = ['Commercial Bank', 'NDB Bank']
+        currencies = ['USD', 'GBP', 'EUR', 'AUD', 'CAD', 'SGD']
+
+        # Primary source: CBSL Average TT rates (most reliable)
+        # Fallback: individual bank scrapers if available
+        bank_sources = ['CBSL Average TT', 'Commercial Bank', 'NDB Bank', 'Seylan Bank', 'Sampath Bank']
+
+        # Find which banks have recent data (last 7 days)
+        from datetime import timedelta
+        recent_cutoff = today - timedelta(days=7)
+        available_banks = list(
+            BankExchangeRate.objects.filter(
+                country__code=country_code,
+                rate_date__gte=recent_cutoff,
+            ).values_list('bank_name', flat=True).distinct()
+        )
+
+        # Use available banks, preserving preferred order
+        banks_to_show = [b for b in bank_sources if b in available_banks]
+        if not banks_to_show:
+            banks_to_show = bank_sources[:2]  # Show structure even if empty
+
         comparison = []
         for curr in currencies:
             row = {'currency': curr, 'banks': []}
-            for bank in banks:
+            for bank in banks_to_show:
                 rate = BankExchangeRate.objects.filter(
                     country__code=country_code,
                     bank_name=bank,
                     currency=curr,
-                    rate_date__lte=today
+                    rate_date__lte=today,
                 ).order_by('-rate_date').first()
                 row['banks'].append({
                     'name': bank,
                     'buying': float(rate.buying_rate) if rate and rate.buying_rate else None,
                     'selling': float(rate.selling_rate) if rate and rate.selling_rate else None,
+                    'date': str(rate.rate_date) if rate else None,
                 })
             comparison.append(row)
         return comparison

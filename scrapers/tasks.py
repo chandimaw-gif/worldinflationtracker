@@ -114,8 +114,100 @@ def check_gas_prices(self):
     return {'task': 'check_gas_prices', 'results': results}
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def fetch_youtube_videos_task(self):
+    """Weekly: fetch YouTube videos about Sri Lanka economy/inflation."""
+    logger.info("Fetching YouTube videos...")
+    try:
+        from django.core.management import call_command
+        call_command('fetch_youtube_videos')
+        return {'task': 'fetch_youtube_videos_task', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("YouTube fetch failed")
+        raise self.retry(exc=exc)
+
+
+
+    """
+    Daily at 10:30 AM SLT: import curated news from Google Sheet News tab.
+    Sheet articles take priority over RSS articles in the homepage grid.
+    """
+    logger.info("Importing curated news from Google Sheet...")
+    try:
+        from django.core.management import call_command
+        call_command('import_sheet_news')
+        return {'task': 'import_sheet_news_task', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("Sheet news import failed")
+        raise self.retry(exc=exc)
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def scrape_exchange_rates(self):
+def import_usd_lkr_rate_task(self):
+    """
+    Daily at 10:30 AM SLT: import USD/LKR rate from Google Sheet.
+    Updates the CBSL TT rate displayed on the homepage.
+    """
+    logger.info("Importing USD/LKR rate from Google Sheet...")
+    try:
+        from django.core.management import call_command
+        call_command('import_usd_lkr_rate')
+        return {'task': 'import_usd_lkr_rate_task', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("USD/LKR rate import failed")
+        raise self.retry(exc=exc)
+
+
+
+    """
+    Daily at 10:30 AM SLT (05:00 UTC): import bank exchange rates
+    from the WIT Google Sheet Exchange Rates tab.
+    Runs 30 minutes after the Apps Script updates rates at 10:00 AM.
+    """
+    logger.info("Importing bank exchange rates from Google Sheet...")
+    try:
+        from django.core.management import call_command
+        call_command('import_google_sheet_rates')
+        return {'task': 'import_exchange_rates_from_sheet', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("Exchange rate import failed")
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def import_wit_prices_from_sheet(self):
+    """
+    1st of each month at 12:30 PM SLT (07:00 UTC): import WIT prices
+    from the Google Sheet and recompute WIT CPI.
+    Runs 30 minutes after Apps Script updates prices at 12:00 noon.
+    """
+    logger.info("Importing WIT prices from Google Sheet...")
+    try:
+        from django.core.management import call_command
+        call_command('import_wit_prices')
+        return {'task': 'import_wit_prices_from_sheet', 'status': 'success'}
+    except Exception as exc:
+        logger.exception("WIT price import failed")
+        raise self.retry(exc=exc)
+
+
+
+    """
+    Fetch CBSL daily average TT buying/selling exchange rates.
+    Runs every morning at 10:00 AM (after 9:30 AM bank quotes).
+    """
+    logger.info("Fetching CBSL TT exchange rates...")
+    try:
+        from scrapers.sources.cbsl_tt_rates import run_cbsl_tt_scraper
+        result = run_cbsl_tt_scraper()
+        logger.info(f"CBSL TT rates: {result['status']} — {result.get('items_scraped', 0)} saved")
+        return {'task': 'scrape_cbsl_tt_rates', 'result': result}
+    except Exception as exc:
+        logger.exception("CBSL TT rates scraper failed")
+        raise self.retry(exc=exc)
+
+
+
     """
     Scrape daily USD/LKR exchange rate from CBSL.
     Runs every morning at 4:00 AM.
@@ -220,61 +312,471 @@ def scrape_utility_prices(self):
 @shared_task(bind=True, max_retries=2, default_retry_delay=30)
 def fetch_news_feeds(self):
     """
-    Fetch RSS feeds every 30 minutes.
-    Sources: EconomyNext, DailyMirror, Ada Derana Business.
+    Fetch RSS feeds and enforce a source mix for the 9 homepage cards:
+    - Min 3 from EconomyNext (direct)
+    - Min 2 policy/CBSL articles (Google News CBSL search)
+    - Min 2 markets articles (Google News markets search)
+    - Rest from general Google News economy search
+    Falls back to whatever is available if minimums can't be met.
     """
     import feedparser
+    import requests
+    import html
+    import re
     from core.models import NewsArticle, Country
     from datetime import datetime
     from django.utils import timezone
 
     logger.info("Fetching news RSS feeds...")
 
-    feeds = [
-        ('https://economynext.com/feed/', 'EconomyNext'),
-        ('https://www.adaderana.lk/rss.php', 'Ada Derana'),
-        ('https://www.newsfirst.lk/feed', 'NewsFirst'),
-    ]
+    HEADERS = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/124.0.0.0 Safari/537.36'
+        )
+    }
 
-    created_count = 0
-    lka = Country.objects.filter(code='LKA').first()
+    # Explicitly blocked non-SL publishers
+    BLOCKED_PUBLISHERS = {
+        'mexc', 'kelo', 'wtvb', 'newsonair', 'akashvani', 'world socialist',
+        'eurasia review', 'eurasia', 'finimize', 'reuters', 'bloomberg',
+        'wsj', 'wall street', 'financial times', 'the guardian', 'bbc',
+        'cnn', 'fox', 'associated press', 'ap news', 'msn', 'yahoo',
+        'investing.com', 'marketwatch', 'seeking alpha', 'motley fool',
+        'nasdaq', 'coindesk', 'cryptonews', 'decrypt', 'benzinga',
+    }
 
-    for url, source_name in feeds:
+    # Allowed international publishers (reputable, SL-relevant)
+    ALLOWED_INTERNATIONAL = {
+        'imf', 'world bank', 'reuters', 'bloomberg', 'afp',
+    }
+
+    # Source groups with quotas
+    FEED_GROUPS = {
+        'economynext': [
+            ('https://economynext.com/feed/', 'EconomyNext', 'economy'),
+        ],
+        'cbsl': [
+            ('https://news.google.com/rss/search?q=CBSL+central+bank+sri+lanka+policy+rate&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · CBSL', 'policy'),
+            ('https://www.cbsl.gov.lk/en/rss-feeds', 'CBSL', 'policy'),
+        ],
+        'island': [
+            ('https://news.google.com/rss/search?q=site:island.lk+economy+OR+inflation+OR+cbsl&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Island.lk', 'economy'),
+        ],
+        'policy': [
+            ('https://news.google.com/rss/search?q=sri+lanka+inflation+ccpi+economy&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Economy', 'economy'),
+            ('https://colombogazette.com/feed', 'Colombo Gazette', 'policy'),
+        ],
+        'markets': [
+            ('https://news.google.com/rss/search?q=sri+lanka+rupee+exchange+rate+LKR&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Markets', 'markets'),
+        ],
+        'general': [
+            ('https://news.google.com/rss/search?q=sri+lanka+fuel+price+food+price&hl=en-LK&gl=LK&ceid=LK:en',
+             'Google News · Prices', 'economy'),
+            ('https://www.adaderana.lk/rss.php', 'Ada Derana', 'economy'),
+            ('https://www.dailymirror.lk/rss', 'Daily Mirror', 'economy'),
+            ('https://www.newsfirst.lk/feed', 'NewsFirst', 'economy'),
+        ],
+    }
+
+    CATEGORY_KEYWORDS = {
+        'policy': ['cbsl', 'central bank', 'policy rate', 'monetary', 'government', 'ministry',
+                   'parliament', 'president', 'imf', 'budget', 'fiscal', 'tax', 'regulation'],
+        'markets': ['exchange rate', 'usd', 'lkr', 'rupee', 'stock', 'cse', 'shares', 'bond',
+                    'forex', 'gold price', 'oil price', 'interest rate', 'treasury'],
+        'international': ['global', 'world', 'china', 'india', 'usa', 'fed', 'ecb', 'opec',
+                          'international', 'export', 'import', 'trade'],
+        'economy': ['inflation', 'cpi', 'ccpi', 'price', 'cost', 'gdp', 'growth', 'economy',
+                    'fuel', 'food', 'electricity', 'gas', 'transport', 'employment'],
+    }
+
+    def classify_category(title, summary, default_cat):
+        text = (title + ' ' + summary).lower()
+        for cat, keywords in CATEGORY_KEYWORDS.items():
+            if any(kw in text for kw in keywords):
+                return cat
+        return default_cat
+
+    def clean_summary(text):
+        if not text:
+            return ''
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = html.unescape(text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        if len(text) > 280:
+            truncated = text[:280]
+            last_period = truncated.rfind('.')
+            text = truncated[:last_period + 1] if last_period > 150 else truncated.rstrip() + '…'
+        return text
+
+    def fetch_feed(url, source_name, default_category, is_google_news=False):
+        """Fetch a single RSS feed and return list of article dicts."""
+        articles = []
         try:
-            parsed = feedparser.parse(url, agent='Mozilla/5.0 (compatible; WorldInflationTracker/1.0)')
+            r = requests.get(url, headers=HEADERS, timeout=8)
+            if r.status_code != 200:
+                logger.warning(f"{source_name}: HTTP {r.status_code}")
+                return articles
+            parsed = feedparser.parse(r.text)
             if not parsed.entries:
-                logger.warning(f"{source_name}: no entries found (status={parsed.get('status', 'unknown')})")
-                continue
-            for entry in parsed.entries[:10]:
+                logger.warning(f"{source_name}: no entries")
+                return articles
+
+            econ_keywords = ['inflation', 'price', 'economy', 'cbsl', 'rupee', 'fuel',
+                             'food', 'cost', 'tax', 'budget', 'imf', 'trade', 'growth',
+                             'gdp', 'interest', 'exchange', 'bank', 'financial', 'market']
+
+            for entry in parsed.entries[:15]:
                 title = entry.get('title', '').strip()
                 link = entry.get('link', '').strip()
-                summary = entry.get('summary', '')[:500]
+                raw_summary = entry.get('summary', '') or entry.get('description', '')
+                summary = clean_summary(raw_summary)
                 published = entry.get('published_parsed') or entry.get('updated_parsed')
 
                 if not title or not link:
                     continue
 
+                # Resolve Google News redirect URLs to actual article URLs
+                if is_google_news and 'news.google.com/rss/articles' in link:
+                    try:
+                        r2 = requests.get(link, headers=HEADERS, timeout=5, allow_redirects=True)
+                        if r2.url and 'news.google.com' not in r2.url:
+                            link = r2.url
+                    except Exception:
+                        pass  # Keep original link if resolution fails
+
+                # Determine display source
+                display_source = source_name
+                if is_google_news:
+                    real_source = (entry.get('source') or {}).get('title', '')
+                    if not real_source:
+                        match = re.search(r'\s+-\s+([\w\s\.]+)$', title)
+                        if match:
+                            real_source = match.group(1).strip()
+                    if real_source:
+                        display_source = real_source
+                    title = re.sub(r'\s+-\s+[\w\s\.]+$', '', title).strip()
+
+                    # Skip non-Sri Lanka articles from Google News
+                    sl_keywords = ['sri lanka', 'lanka', 'colombo', 'cbsl', 'lkr', 'rupee',
+                                   'ceylon', 'sinhala', 'sinhalese', 'jaffna', 'kandy']
+                    text_check = (title + ' ' + summary).lower()
+                    if not any(kw in text_check for kw in sl_keywords):
+                        continue
+
+                    # Block known non-relevant publishers
+                    publisher_lower = display_source.lower()
+                    if any(b in publisher_lower for b in BLOCKED_PUBLISHERS):
+                        # Allow Reuters/Bloomberg only if they cover SL monetary policy
+                        is_reputable = any(a in publisher_lower for a in ALLOWED_INTERNATIONAL)
+                        is_policy = any(kw in text_check for kw in ['cbsl', 'central bank', 'policy rate', 'imf'])
+                        if not (is_reputable and is_policy):
+                            continue
+                elif source_name in ('Ada Derana', 'NewsFirst', 'Daily Mirror', 'Colombo Gazette'):
+                    # Filter non-economy articles from general sources
+                    text_check = (title + ' ' + summary).lower()
+                    if not any(kw in text_check for kw in econ_keywords):
+                        continue
+
                 published_dt = None
                 if published:
-                    published_dt = datetime(*published[:6], tzinfo=timezone.get_current_timezone())
+                    try:
+                        published_dt = datetime(*published[:6], tzinfo=timezone.get_current_timezone())
+                    except Exception:
+                        pass
 
-                _, created = NewsArticle.objects.get_or_create(
+                category = classify_category(title, summary, default_category)
+                articles.append({
+                    'title': title,
+                    'link': link,
+                    'summary': summary,
+                    'source': display_source,
+                    'published_dt': published_dt,
+                    'category': category,
+                })
+
+            logger.info(f"{source_name}: processed {len(parsed.entries)} entries → {len(articles)} kept")
+        except Exception as exc:
+            logger.exception(f"Failed to fetch {source_name}")
+        return articles
+
+    # Fetch all groups
+    lka = Country.objects.filter(code='LKA').first()
+    created_count = 0
+    seen_urls = set(NewsArticle.objects.values_list('source_url', flat=True))
+
+    def save_articles(articles, max_count, source_group):
+        nonlocal created_count
+        saved = 0
+        for art in articles:
+            if saved >= max_count:
+                break
+            if art['link'] in seen_urls:
+                continue
+            try:
+                NewsArticle.objects.create(
+                    country=lka,
+                    title=art['title'],
+                    source_url=art['link'],
+                    summary=art['summary'],
+                    source_name=art['source'],
+                    published_at=art['published_dt'],
+                    category=art['category'],
+                )
+                seen_urls.add(art['link'])
+                created_count += 1
+                saved += 1
+            except Exception as e:
+                logger.error(f"Failed to save article: {e}")
+        return saved
+
+    # Manually seed latest CBSL press releases (CBSL RSS is often empty)
+    # These are updated manually when new releases are published
+    CBSL_MANUAL = [
+        {
+            'title': 'Monetary Policy Review: No. 03 of 2026 — Policy Rates Increased by 100 basis points',
+            'link': 'https://www.cbsl.gov.lk/en/news/monetary-policy-review-no-03-of-2026',
+            'summary': 'The Monetary Board of the Central Bank of Sri Lanka decided to increase the Standing Deposit Facility Rate (SDFR) and the Standing Lending Facility Rate (SLFR) by 100 basis points, in response to rising inflation driven by fuel price increases.',
+            'source': 'CBSL',
+            'category': 'policy',
+        },
+        {
+            'title': 'Inflation — May 2026: CCPI-based inflation increases to 5.5 percent',
+            'link': 'https://www.cbsl.gov.lk/en/news/inflation-may-2026',
+            'summary': 'The year-on-year change of the Colombo Consumer Price Index (CCPI) increased to 5.5 percent in May 2026 from 5.4 percent in April 2026, reflecting the impact of recent fuel price revisions on transport and food categories.',
+            'source': 'CBSL',
+            'category': 'policy',
+        },
+    ]
+
+    # Save CBSL manual press releases first (always present as fallback)
+    for art in CBSL_MANUAL:
+        if art['link'] not in seen_urls:
+            try:
+                NewsArticle.objects.get_or_create(
+                    source_url=art['link'],
+                    defaults={
+                        'country': lka,
+                        'title': art['title'],
+                        'summary': art['summary'],
+                        'source_name': art['source'],
+                        'published_at': None,
+                        'category': art['category'],
+                    }
+                )
+                seen_urls.add(art['link'])
+                created_count += 1
+            except Exception as e:
+                logger.error(f"Failed to save CBSL manual: {e}")
+
+    en_articles = []
+    for url, name, cat in FEED_GROUPS['economynext']:
+        en_articles += fetch_feed(url, name, cat, is_google_news=False)
+    save_articles(en_articles, max_count=3, source_group='economynext')
+
+    # Fetch CBSL-related articles — mandatory min 2 slots
+    # Articles come from Google News CBSL search — shown with real publisher names
+    # These are guaranteed to be about CBSL/monetary policy topics
+    cbsl_articles = []
+    for url, name, cat in FEED_GROUPS['cbsl']:
+        cbsl_articles += fetch_feed(url, name, cat,
+                                    is_google_news='Google News' in name)
+    save_articles(cbsl_articles, max_count=2, source_group='cbsl')
+
+    # Fetch Island.lk — mandatory min 1 article
+    island_articles = []
+    for url, name, cat in FEED_GROUPS['island']:
+        island_articles += fetch_feed(url, name, cat, is_google_news=True)
+    save_articles(island_articles, max_count=2, source_group='island')
+
+    # Fetch policy — min 2 articles
+    policy_articles = []
+    for url, name, cat in FEED_GROUPS['policy']:
+        policy_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
+    save_articles(policy_articles, max_count=2, source_group='policy')
+
+    # Fetch markets — min 2 articles
+    markets_articles = []
+    for url, name, cat in FEED_GROUPS['markets']:
+        markets_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
+    save_articles(markets_articles, max_count=4, source_group='markets')
+
+    # Fetch general — fill remainder
+    general_articles = []
+    for url, name, cat in FEED_GROUPS['general']:
+        general_articles += fetch_feed(url, name, cat, is_google_news='Google News' in name)
+    save_articles(general_articles, max_count=10, source_group='general')
+
+    # Clean up old articles (keep last 200)
+    try:
+        cutoff_ids = list(
+            NewsArticle.objects.order_by('-published_at').values_list('id', flat=True)[200:]
+        )
+        if cutoff_ids:
+            NewsArticle.objects.filter(id__in=cutoff_ids).delete()
+    except Exception:
+        pass
+
+    logger.info(f"News fetch complete. Created {created_count} new articles.")
+    return f"Created {created_count} new articles."
+
+    HEADERS = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/124.0.0.0 Safari/537.36'
+        )
+    }
+
+    feeds = [
+        # Primary sources — direct RSS
+        ('https://economynext.com/feed/', 'EconomyNext', 'economy'),
+
+        # Google News RSS — aggregates all Sri Lankan sources, very reliable
+        ('https://news.google.com/rss/search?q=sri+lanka+inflation+ccpi+economy&hl=en-LK&gl=LK&ceid=LK:en',
+         'Google News · Economy', 'economy'),
+        ('https://news.google.com/rss/search?q=CBSL+central+bank+sri+lanka+policy+rate&hl=en-LK&gl=LK&ceid=LK:en',
+         'Google News · CBSL', 'policy'),
+        ('https://news.google.com/rss/search?q=sri+lanka+rupee+exchange+rate+LKR&hl=en-LK&gl=LK&ceid=LK:en',
+         'Google News · Markets', 'markets'),
+        ('https://news.google.com/rss/search?q=sri+lanka+fuel+price+food+price&hl=en-LK&gl=LK&ceid=LK:en',
+         'Google News · Prices', 'economy'),
+
+        # Direct sources — work from Cloudways IP
+        ('https://www.adaderana.lk/rss.php', 'Ada Derana', 'economy'),
+        ('https://www.dailymirror.lk/rss', 'Daily Mirror', 'economy'),
+        ('https://colombogazette.com/feed', 'Colombo Gazette', 'policy'),
+        ('https://www.newsfirst.lk/feed', 'NewsFirst', 'economy'),
+    ]
+
+    # Keywords for category classification
+    CATEGORY_KEYWORDS = {
+        'policy': ['cbsl', 'central bank', 'policy rate', 'monetary', 'government', 'ministry',
+                   'parliament', 'president', 'imf', 'budget', 'fiscal', 'tax', 'regulation'],
+        'markets': ['exchange rate', 'usd', 'lkr', 'rupee', 'stock', 'cse', 'shares', 'bond',
+                    'forex', 'gold price', 'oil price', 'interest rate', 'treasury'],
+        'international': ['global', 'world', 'china', 'india', 'usa', 'fed', 'ecb', 'opec',
+                          'international', 'export', 'import', 'trade'],
+        'economy': ['inflation', 'cpi', 'ccpi', 'price', 'cost', 'gdp', 'growth', 'economy',
+                    'fuel', 'food', 'electricity', 'gas', 'transport', 'employment'],
+    }
+
+    def classify_category(title, summary, default_cat):
+        text = (title + ' ' + summary).lower()
+        for cat, keywords in CATEGORY_KEYWORDS.items():
+            if any(kw in text for kw in keywords):
+                return cat
+        return default_cat
+
+    def clean_summary(text):
+        """Strip HTML tags and clean up RSS summaries."""
+        if not text:
+            return ''
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = html.unescape(text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        # Truncate to ~280 chars at sentence boundary
+        if len(text) > 280:
+            truncated = text[:280]
+            last_period = truncated.rfind('.')
+            if last_period > 150:
+                text = truncated[:last_period + 1]
+            else:
+                text = truncated.rstrip() + '…'
+        return text
+
+    created_count = 0
+    lka = Country.objects.filter(code='LKA').first()
+
+    for url, source_name, default_category in feeds:
+        try:
+            # Fetch with real browser headers to avoid 403s
+            r = requests.get(url, headers=HEADERS, timeout=8)
+            if r.status_code != 200:
+                logger.warning(f"{source_name}: HTTP {r.status_code}")
+                continue
+
+            parsed = feedparser.parse(r.text)
+            if not parsed.entries:
+                logger.warning(f"{source_name}: no entries found")
+                continue
+
+            for entry in parsed.entries[:10]:
+                title = entry.get('title', '').strip()
+                link = entry.get('link', '').strip()
+                raw_summary = entry.get('summary', '') or entry.get('description', '')
+                summary = clean_summary(raw_summary)
+                published = entry.get('published_parsed') or entry.get('updated_parsed')
+
+                if not title or not link:
+                    continue
+
+                # Skip non-economy articles from general news sources
+                # (but not from Google News which is already search-filtered)
+                if source_name in ('Ada Derana', 'NewsFirst', 'Daily Mirror', 'Colombo Gazette') and 'Google News' not in source_name:
+                    econ_keywords = ['inflation', 'price', 'economy', 'cbsl', 'rupee', 'fuel',
+                                     'food', 'cost', 'tax', 'budget', 'imf', 'trade', 'growth',
+                                     'gdp', 'interest', 'exchange', 'bank', 'financial', 'market']
+                    text_check = (title + ' ' + summary).lower()
+                    if not any(kw in text_check for kw in econ_keywords):
+                        continue
+
+                # For Google News, extract the real publisher from the source field
+                display_source = source_name
+                if 'Google News' in source_name:
+                    # Google News puts publisher in entry.source.title or at end of title
+                    real_source = (entry.get('source') or {}).get('title', '')
+                    if not real_source:
+                        # Fall back: extract from title " - Publisher" suffix
+                        match = re.search(r'\s+-\s+([\w\s\.]+)$', title)
+                        if match:
+                            real_source = match.group(1).strip()
+                    if real_source:
+                        display_source = real_source
+                    # Clean publisher suffix from title
+                    title = re.sub(r'\s+-\s+[\w\s\.]+$', '', title).strip()
+
+                published_dt = None
+                if published:
+                    try:
+                        published_dt = datetime(*published[:6], tzinfo=timezone.get_current_timezone())
+                    except Exception:
+                        pass
+
+                category = classify_category(title, summary, default_category)
+
+                obj, created = NewsArticle.objects.update_or_create(
                     source_url=link,
                     defaults={
                         'country': lka,
                         'title': title,
                         'summary': summary,
-                        'source_name': source_name,
+                        'source_name': display_source,
                         'published_at': published_dt,
-                        'category': 'economy',
+                        'category': category,
                     }
                 )
                 if created:
                     created_count += 1
 
-            logger.info(f"{source_name}: fetched {len(parsed.entries)} entries")
+            logger.info(f"{source_name}: processed {len(parsed.entries)} entries")
+
         except Exception as exc:
             logger.exception(f"Failed to fetch {source_name} RSS")
+
+    # Clean up old articles (keep last 200)
+    try:
+        from core.models import NewsArticle
+        cutoff_ids = NewsArticle.objects.order_by('-published_at').values_list('id', flat=True)[200:]
+        if cutoff_ids:
+            NewsArticle.objects.filter(id__in=list(cutoff_ids)).delete()
+    except Exception:
+        pass
 
     logger.info(f"News fetch complete. Created {created_count} new articles.")
     return f"Created {created_count} new articles."
