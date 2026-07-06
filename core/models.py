@@ -211,6 +211,9 @@ class ScrapeSource(models.Model):
         ('css', 'CSS Selector'),
         ('xpath', 'XPath'),
         ('regex', 'Regex on full page'),
+        ('json', 'JSON Path'),
+        ('shopify', 'Shopify Product Handle'),
+        ('ceypetco_fuel', 'CEYPETCO Fuel Table'),
     ]
 
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='scrape_sources')

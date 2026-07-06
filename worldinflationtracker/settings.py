@@ -110,6 +110,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'scrapers.tasks.scrape_food_prices',
         'schedule': 'crontab(hour=6, minute=0)',
     },
+    'scrape-configured-sources-daily': {
+        'task': 'scrapers.tasks.scrape_configured_sources',
+        'schedule': 'crontab(hour=6, minute=30)',
+        'kwargs': {'country_code': 'LKA'},
+    },
     'check-fuel-prices-daily': {
         'task': 'scrapers.tasks.check_fuel_prices',
         'schedule': 'crontab(hour=5, minute=0)',

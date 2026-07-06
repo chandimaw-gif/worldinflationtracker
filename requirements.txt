@@ -8,6 +8,7 @@ celery==5.4.0
 django-celery-beat==2.6.0
 scrapy==2.11.2
 beautifulsoup4==4.12.3
+lxml==5.2.2
 playwright==1.44.0
 requests==2.31.0
 feedparser==6.0.11

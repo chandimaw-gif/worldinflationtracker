@@ -11,18 +11,20 @@ Usage:
     python3 manage.py scrape_configured_sources --dry-run
 """
 
+import json
 import re
 import time
 import logging
 from datetime import date
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from core.models import Country, PriceObservation, ScrapeSource, ScrapeLog
+from core.models import Country, PriceObservation, PriceAuditLog, ScrapeSource, ScrapeLog
 
 logger = logging.getLogger('scrapers')
 
@@ -83,6 +85,15 @@ def _scrape_static(source):
         if not match:
             raise Exception(f"Regex '{source.selector}' found no match")
         text = match.group(1) if match.groups() else match.group(0)
+    elif source.selector_type == 'json':
+        data = json.loads(html)
+        text = _json_path_get(data, source.selector)
+        if text is None:
+            raise Exception(f"JSON path '{source.selector}' found no match")
+    elif source.selector_type == 'shopify':
+        return _scrape_shopify(source)
+    elif source.selector_type == 'ceypetco_fuel':
+        return _scrape_ceypetco_fuel(source)
     else:
         raise Exception(f"Unknown selector type: {source.selector_type}")
 
@@ -133,6 +144,129 @@ def _scrape_js(source):
         raise Exception(f"Could not extract price from text: '{text[:200]}'")
 
     return price
+
+
+def _json_path_get(data, path):
+    """Simple dotted JSON path accessor."""
+    if not path:
+        return data
+    current = data
+    for part in path.split('.'):
+        if current is None:
+            return None
+        if isinstance(current, dict):
+            current = current.get(part)
+        elif isinstance(current, list):
+            try:
+                current = current[int(part)]
+            except (ValueError, IndexError):
+                return None
+        else:
+            return None
+    return current
+
+
+def _scrape_shopify(source):
+    """Parse Shopify product JSON endpoint."""
+    url = source.url
+    parsed = urlparse(url)
+    path = parsed.path
+    if not path.endswith('.json'):
+        if '/products/' in path:
+            handle = path.split('/products/')[-1].split('/')[0]
+            path = f'/products/{handle}.json'
+        else:
+            raise Exception('Invalid Shopify URL; expected /products/{handle}.json')
+        url = urljoin(url, path)
+
+    resp = requests.get(url, headers=HEADERS, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+
+    product = data.get('product', {})
+    variants = product.get('variants', [])
+    if not variants:
+        raise Exception('No variants found in Shopify product')
+
+    selected = None
+    if source.selector:
+        fragment = source.selector.lower()
+        for variant in variants:
+            if fragment in (variant.get('title') or '').lower():
+                selected = variant
+                break
+        if not selected:
+            for variant in variants:
+                if fragment in (variant.get('option1') or '').lower() or \
+                   fragment in (variant.get('option2') or '').lower():
+                    selected = variant
+                    break
+
+    if not selected:
+        for variant in variants:
+            if variant.get('available', True):
+                selected = variant
+                break
+    if not selected:
+        selected = variants[0]
+
+    raw = selected.get('price')
+    if raw is None:
+        raise Exception('Selected Shopify variant has no price')
+
+    price = _extract_price(str(raw), source.price_regex or None)
+    if price is None:
+        raise Exception(f"Could not parse Shopify price: {raw}")
+    return price
+
+
+def _scrape_ceypetco_fuel(source):
+    """Parse the first fuel price table on CEYPETCO historical prices page."""
+    url = 'https://ceypetco.gov.lk/historical-prices/'
+    resp = requests.get(url, headers=HEADERS, timeout=30)
+    resp.raise_for_status()
+    html = resp.text
+
+    table_re = re.compile(r'<table[^>]*>(.*?)</table>', re.IGNORECASE | re.DOTALL)
+    row_re = re.compile(r'<tr>\s*<td>(\d{2}\.\d{2}\.\d{4})</td>((?:\s*<td>([^<]*)</td>)*)\s*</tr>', re.IGNORECASE | re.DOTALL)
+    cell_re = re.compile(r'<td>([^<]*)</td>', re.IGNORECASE)
+    header_re = re.compile(r'<th>([^<]*)</th>', re.IGNORECASE)
+
+    best_table = None
+    best_headers = None
+    for table_match in table_re.finditer(html):
+        table_html = table_match.group(1)
+        headers = [h.strip() for h in header_re.findall(table_html)]
+        header_text = ' '.join(headers).upper()
+        if 'CIRCULAR' in header_text or 'DRUM' in header_text:
+            continue
+        if any(x in header_text for x in ['LP 92', 'LP 95', 'LAD']):
+            best_table = table_html
+            best_headers = headers
+            break
+
+    if not best_table or not best_headers:
+        raise Exception('CEYPETCO fuel table not found')
+
+    rows = row_re.findall(best_table)
+    if not rows:
+        raise Exception('No data rows in CEYPETCO fuel table')
+
+    cell_values = [v.strip() for v in cell_re.findall(rows[0][1])]
+    target_col = (source.selector or '').strip()
+    if not target_col:
+        raise Exception('No CEYPETCO column selector configured')
+
+    for i, val in enumerate(cell_values):
+        if i + 1 >= len(best_headers):
+            break
+        header = best_headers[i + 1]
+        if target_col.upper() in header.upper():
+            price = _extract_price(val)
+            if price and price > 0:
+                return price
+
+    raise Exception(f"CEYPETCO column '{target_col}' not found or empty")
 
 
 class Command(BaseCommand):
@@ -209,6 +343,22 @@ class Command(BaseCommand):
                                 'selector': source.selector,
                             },
                         }
+                    )
+                    PriceAuditLog.objects.create(
+                        item=source.item,
+                        country=country,
+                        observation_date=today,
+                        price=final_price,
+                        source_url=source.url,
+                        source_name=source.source_name,
+                        scrape_method='automated',
+                        product_page_title=source.source_name,
+                        product_page_snapshot={
+                            'raw_price': str(price),
+                            'multiplier': str(source.price_multiplier),
+                            'selector': source.selector,
+                            'selector_type': source.selector_type,
+                        },
                     )
 
                 source.last_price = final_price

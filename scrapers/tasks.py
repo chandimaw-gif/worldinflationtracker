@@ -10,6 +10,7 @@ Schedule overview:
 
 import logging
 from celery import shared_task
+from django.core.management import call_command
 
 from scrapers.base import BaseScraper
 from scrapers.sources.cbsl import CBSLExchangeRateScraper, CBSLGoldScraper
@@ -55,6 +56,21 @@ def scrape_food_prices(self):
         'task': 'scrape_food_prices',
         'results': results,
     }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def scrape_configured_sources(self, country_code: str = 'LKA'):
+    """
+    Scrape prices from admin-configured ScrapeSource entries.
+    Runs every morning at 6:30 AM, after the legacy scrapers.
+    """
+    logger.info(f"Starting configured source scraping for {country_code}...")
+    try:
+        call_command('scrape_configured_sources', country=country_code)
+        return {'task': 'scrape_configured_sources', 'status': 'success', 'country': country_code}
+    except Exception as exc:
+        logger.exception("Configured source scraper failed")
+        raise self.retry(exc=exc)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
