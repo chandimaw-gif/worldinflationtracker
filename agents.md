@@ -50,3 +50,30 @@ Always run Git pulls, migrations, and management commands from this directory.
 ## Reminder
 
 - WIT runs on **port 8000** only. Never touch **port 8001**.
+
+## Admin UI — 2026-07-06
+
+- Admin URL: `https://worldinflationtracker.com/admin/`
+- Login: `chandimaw@gmail.com` / `WIT123!@#`
+- Custom admin dashboard shows quick links for:
+  - Scrape Sources
+  - YouTube Sources
+  - YouTube Videos
+  - Price Observations
+  - Periodic Tasks (Celery Beat)
+
+## New Models
+
+- `ScrapeSource` now supports scheduling:
+  - `scrape_frequency`: daily / weekly / monthly / quarterly / annual
+  - `scrape_day_of_week`: 0=Monday … 6=Sunday
+  - `scrape_day_of_month`: 1-31
+- `YouTubeSource` for configurable homepage video sources:
+  - Search query or channel ID
+  - `refresh_frequency`, `refresh_day_of_week`, `refresh_day_of_month`
+  - Admin action: "Fetch videos now"
+
+## Management Commands
+
+- `python3 manage.py scrape_configured_sources --country LKA`
+- `python3 manage.py fetch_youtube_videos`

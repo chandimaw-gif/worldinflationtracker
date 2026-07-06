@@ -45,3 +45,11 @@
 
 - `agents.md` and `memory.md` now contain SSH key and port 8000 rules.
 - `crontab.txt` and `DEPLOY.md` are in the repo.
+
+## Admin UI Added — 2026-07-06
+
+- Django admin customized with project branding and quick-links dashboard.
+- Superuser `chandimaw@gmail.com` password `WIT123!@#` confirmed working.
+- ScrapeSource scheduling fields added (day-of-week, day-of-month).
+- YouTubeSource model added with default sources seeded.
+- Admin can add/edit sources and trigger YouTube fetch from the UI.
