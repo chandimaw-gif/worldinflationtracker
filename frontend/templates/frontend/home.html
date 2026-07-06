@@ -327,11 +327,19 @@ function filterByRange(labels, data, range) {
 
 function buildDatasets(metric, range, showWIT) {
     const colors = metricColors[metric] || metricColors.official_ccpi;
-    const filtered = filterByRange(chartData.labels, chartData[metric] || [], range);
+    const rawData = chartData[metric] || [];
+    const filtered = filterByRange(chartData.labels, rawData, range);
+
+    // For headline index, merge official CCPI with WIT estimate where official is missing
+    let mergedData = filtered.data;
+    if (metric === 'official_ccpi' && chartData.wit_ccpi && chartData.wit_ccpi.some(v => v !== null)) {
+        const witFiltered = filterByRange(chartData.labels, chartData.wit_ccpi || [], range);
+        mergedData = filtered.data.map((val, idx) => val !== null && val !== undefined ? val : witFiltered.data[idx]);
+    }
 
     const datasets = [{
         label: metricLabels[metric] || metric,
-        data: filtered.data,
+        data: mergedData,
         borderColor: colors.border,
         backgroundColor: colors.bg,
         fill: true,
@@ -341,7 +349,7 @@ function buildDatasets(metric, range, showWIT) {
         borderWidth: 2,
     }];
 
-    // WIT overlay — only available for index value modes (not YoY)
+    // WIT-only overlay — only available for index value modes (not YoY)
     if (showWIT && !isYoY(metric) && chartData.wit_ccpi && chartData.wit_ccpi.some(v => v !== null)) {
         const witFiltered = filterByRange(chartData.labels, chartData.wit_ccpi || [], range);
         datasets.push({

@@ -147,7 +147,8 @@ class HomeView(TemplateView):
         }
 
         # Build unified month list spanning all available data
-        all_months = sorted(set(official_by_month.keys()) | set(core_by_month.keys()))
+        # Include WIT-estimated months so recent months (before official CBSL release) appear
+        all_months = sorted(set(official_by_month.keys()) | set(core_by_month.keys()) | set(wit_by_month.keys()))
 
         chart_data = {
             'labels': [],
@@ -283,36 +284,98 @@ class ExchangeRateView(TemplateView):
 
     def _get_bank_comparison(self, country_code, today):
         from core.models import BankExchangeRate
+        from django.db.models import Max, Q
         currencies = ['USD', 'GBP', 'EUR', 'AUD', 'CAD', 'SGD']
 
-        # Primary source: CBSL Average TT rates (most reliable)
-        # Fallback: individual bank scrapers if available
-        bank_sources = ['CBSL Average TT', 'Commercial Bank', 'NDB Bank', 'Seylan Bank', 'Sampath Bank']
+        # Preferred banks from Google Sheet (in priority order)
+        bank_sources = [
+            'Commercial Bank', 'NDB Bank', 'Seylan Bank',
+            'Sampath Bank', 'HNB (Hatton National Bank)',
+            'Bank of Ceylon (BOC)', 'DFCC Bank', 
+        ]
 
-        # Find which banks have recent data (last 7 days)
-        from datetime import timedelta
-        recent_cutoff = today - timedelta(days=7)
-        available_banks = list(
-            BankExchangeRate.objects.filter(
-                country__code=country_code,
-                rate_date__gte=recent_cutoff,
-            ).values_list('bank_name', flat=True).distinct()
+        # Find the latest date that has at least 3 banks with both buy and sell rates
+        latest_common_date = None
+        dates_with_counts = (
+            BankExchangeRate.objects
+            .filter(country__code=country_code, currency='USD')
+            .exclude(buying_rate__isnull=True, selling_rate__isnull=True)
+            .values('rate_date')
+            .annotate(bank_count=Max('id'))
+            .order_by('-rate_date')
         )
 
-        # Use available banks, preserving preferred order
-        banks_to_show = [b for b in bank_sources if b in available_banks]
-        if not banks_to_show:
-            banks_to_show = bank_sources[:2]  # Show structure even if empty
+        # Actually count valid banks per date
+        from django.db.models import Count
+        date_counts = (
+            BankExchangeRate.objects
+            .filter(
+                country__code=country_code,
+                currency='USD',
+                buying_rate__isnull=False,
+                selling_rate__isnull=False,
+            )
+            .values('rate_date')
+            .annotate(count=Count('bank_name', distinct=True))
+            .order_by('-rate_date')
+        )
+
+        for dc in date_counts:
+            if dc['count'] >= 3:
+                latest_common_date = dc['rate_date']
+                break
+
+        # If no date has 3 banks, use the overall latest date with any data
+        if not latest_common_date:
+            latest_rate = BankExchangeRate.objects.filter(
+                country__code=country_code,
+                currency='USD',
+            ).order_by('-rate_date').first()
+            if latest_rate:
+                latest_common_date = latest_rate.rate_date
+
+        # Determine which banks to show
+        if latest_common_date:
+            # Banks with both buy and sell on the latest common date
+            banks_on_date = list(
+                BankExchangeRate.objects.filter(
+                    country__code=country_code,
+                    currency='USD',
+                    rate_date=latest_common_date,
+                    buying_rate__isnull=False,
+                    selling_rate__isnull=False,
+                ).values_list('bank_name', flat=True).distinct()
+            )
+            banks_to_show = [b for b in bank_sources if b in banks_on_date][:3]
+
+            # If fewer than 3 on that date, fall back to most recent data per bank
+            if len(banks_to_show) < 3:
+                recent_banks = list(
+                    BankExchangeRate.objects.filter(
+                        country__code=country_code,
+                        currency='USD',
+                        buying_rate__isnull=False,
+                        selling_rate__isnull=False,
+                    ).values_list('bank_name', flat=True).distinct()
+                )
+                for b in bank_sources:
+                    if b in recent_banks and b not in banks_to_show:
+                        banks_to_show.append(b)
+                    if len(banks_to_show) >= 3:
+                        break
+        else:
+            banks_to_show = []
 
         comparison = []
         for curr in currencies:
             row = {'currency': curr, 'banks': []}
-            for bank in banks_to_show:
+            for bank in banks_to_show[:3]:
                 rate = BankExchangeRate.objects.filter(
                     country__code=country_code,
                     bank_name=bank,
                     currency=curr,
-                    rate_date__lte=today,
+                    buying_rate__isnull=False,
+                    selling_rate__isnull=False,
                 ).order_by('-rate_date').first()
                 row['banks'].append({
                     'name': bank,

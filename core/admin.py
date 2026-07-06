@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Country, ProductGroup, BasketItem, PriceObservation,
-    CPIIndex, ExchangeRate, NewsArticle, ScrapeLog,
+    CPIIndex, ExchangeRate, NewsArticle, ScrapeLog, ScrapeSource,
     AdPlacement, PriceAuditLog
 )
 
@@ -78,3 +78,16 @@ class PriceAuditLogAdmin(admin.ModelAdmin):
     list_display = ['item', 'observation_date', 'price', 'source_name', 'scrape_method', 'created_at']
     list_filter = ['country', 'scrape_method', 'observation_date']
     date_hierarchy = 'observation_date'
+
+
+@admin.register(ScrapeSource)
+class ScrapeSourceAdmin(admin.ModelAdmin):
+    list_display = [
+        'item', 'source_name', 'url', 'selector_type', 'is_active',
+        'requires_js', 'last_price', 'last_status', 'last_scraped_at'
+    ]
+    list_filter = ['is_active', 'requires_js', 'selector_type', 'country', 'scrape_frequency', 'last_status']
+    search_fields = ['item__name', 'source_name', 'url', 'notes']
+    list_editable = ['is_active']
+    readonly_fields = ['last_price', 'last_price_date', 'last_status', 'last_error', 'last_scraped_at', 'created_at', 'updated_at']
+
