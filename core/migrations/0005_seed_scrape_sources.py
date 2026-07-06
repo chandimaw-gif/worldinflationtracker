@@ -1,6 +1,6 @@
 """
 Seed example ScrapeSource entries for Keells, Spar and CEYPETCO.
-These are starting configurations; administrators can edit them via Django admin.
+Uses the server's ScrapeSource model (with country FK).
 """
 
 from django.db import migrations
@@ -140,6 +140,7 @@ def seed_scrape_sources(apps, schema_editor):
             item=item,
             source_name=cfg['source_name'],
             defaults={
+                'country': lka,
                 'url': cfg['url'],
                 'selector_type': cfg['selector_type'],
                 'selector': cfg['selector'],
@@ -174,7 +175,7 @@ def reverse_seed(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0003_scrapesource'),
+        ('core', '0004_add_scrapesource'),
     ]
 
     operations = [

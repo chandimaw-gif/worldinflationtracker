@@ -174,82 +174,6 @@ class NewsArticle(models.Model):
         return f"{self.title[:80]}... — {self.source_name}"
 
 
-class ScrapeSource(models.Model):
-    """
-    Configurable source definition for price scraping.
-    Allows admin users to add/edit scraping sources without code changes.
-    """
-
-    SELECTOR_TYPES = [
-        ('css', 'CSS Selector'),
-        ('xpath', 'XPath'),
-        ('regex', 'Regex'),
-        ('json', 'JSON Path'),
-        ('shopify', 'Shopify Product Handle'),
-        ('ceypetco_fuel', 'CEYPETCO Fuel Table'),
-    ]
-
-    FREQUENCY_CHOICES = [
-        ('daily', 'Daily'),
-        ('weekly', 'Weekly'),
-        ('monthly', 'Monthly'),
-    ]
-
-    item = models.ForeignKey(
-        BasketItem,
-        on_delete=models.CASCADE,
-        related_name='scrape_sources',
-        help_text="Basket item this source supplies a price for"
-    )
-    source_name = models.CharField(max_length=200, help_text="Human-readable source name, e.g. 'Keells - Nadu Rice'")
-    url = models.URLField(max_length=500, help_text="URL to scrape. For Shopify use /products/{handle}.json")
-    selector_type = models.CharField(
-        max_length=20,
-        choices=SELECTOR_TYPES,
-        default='css',
-        help_text="How to locate the price on the page"
-    )
-    selector = models.CharField(
-        max_length=500,
-        blank=True,
-        help_text=(
-            "CSS selector, XPath, regex pattern, JSON path, or Shopify variant selector. "
-            "For Shopify: use variant title fragment like 'WT' or '1Kg'. Leave blank for first available."
-        )
-    )
-    price_regex = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Optional regex to extract numeric price from matched text (default: first number)"
-    )
-    price_multiplier = models.DecimalField(
-        max_digits=10,
-        decimal_places=4,
-        default=1,
-        help_text="Multiply scraped price by this factor (e.g. 0.5 for a 500g pack to get 1kg price)"
-    )
-    currency_code = models.CharField(max_length=3, default='LKR')
-    requires_js = models.BooleanField(
-        default=False,
-        help_text="Use Playwright to render JavaScript (needed for React SPAs like Keells)"
-    )
-    is_active = models.BooleanField(default=True)
-    scrape_frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='daily')
-    last_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    last_status = models.CharField(max_length=20, blank=True)
-    last_error = models.TextField(blank=True)
-    last_scraped_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name_plural = "Scrape Sources"
-        ordering = ['source_name', 'item']
-        unique_together = ['item', 'source_name']
-
-    def __str__(self):
-        return f"{self.source_name} → {self.item.name}"
-
-
 class ScrapeLog(models.Model):
     STATUS_CHOICES = [
         ('running', 'Running'),
@@ -274,6 +198,64 @@ class ScrapeLog(models.Model):
 
     def __str__(self):
         return f"{self.job_name} ({self.status}) @ {self.started_at}"
+
+
+
+
+class ScrapeSource(models.Model):
+    """
+    Configurable scraping source for a basket item.
+    Allows admins to add/edit scraping targets without code changes.
+    """
+    SELECTOR_TYPE_CHOICES = [
+        ('css', 'CSS Selector'),
+        ('xpath', 'XPath'),
+        ('regex', 'Regex on full page'),
+        ('json', 'JSON Path'),
+        ('shopify', 'Shopify Product Handle'),
+        ('ceypetco_fuel', 'CEYPETCO Fuel Table'),
+    ]
+
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='scrape_sources')
+    item = models.ForeignKey(BasketItem, on_delete=models.CASCADE, related_name='scrape_sources')
+    source_name = models.CharField(max_length=200, help_text="e.g., Keells, Spar, CEYPETCO")
+    url = models.URLField(max_length=1000)
+    selector_type = models.CharField(max_length=20, choices=SELECTOR_TYPE_CHOICES, default='css')
+    selector = models.TextField(help_text="CSS selector, XPath, or regex pattern")
+    price_regex = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Optional regex to extract numeric price from selected text (e.g., '([0-9,]+\\.\\d{2})')"
+    )
+    price_multiplier = models.DecimalField(
+        max_digits=10, decimal_places=4, default=1,
+        help_text="Multiply scraped price by this factor (e.g., 1000 for 'per kg' if site shows per gram)"
+    )
+    currency_code = models.CharField(max_length=3, default='LKR')
+    requires_js = models.BooleanField(default=False, help_text="Use Playwright for JavaScript-rendered pages")
+    is_active = models.BooleanField(default=True)
+    scrape_frequency = models.CharField(
+        max_length=20,
+        choices=BasketItem.SCRAPE_FREQUENCY_CHOICES,
+        default='daily'
+    )
+    notes = models.TextField(blank=True, help_text="Any notes about this source")
+
+    # Tracking fields
+    last_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    last_price_date = models.DateField(null=True, blank=True)
+    last_status = models.CharField(max_length=20, blank=True)
+    last_error = models.TextField(blank=True)
+    last_scraped_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Scrape Sources"
+        ordering = ['item__name', 'source_name']
+
+    def __str__(self):
+        return f"{self.item.name} from {self.source_name}"
 
 
 class AdPlacement(models.Model):
