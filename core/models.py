@@ -1,5 +1,8 @@
-from django.db import models
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
+from django.urls import reverse
+from django.utils import timezone
 
 
 class Country(models.Model):
@@ -137,6 +140,8 @@ class ExchangeRate(models.Model):
     local_currency = models.CharField(max_length=3)
     rate = models.DecimalField(max_digits=12, decimal_places=4, help_text="Local per 1 USD")
     source = models.CharField(max_length=200, blank=True)
+    is_excluded = models.BooleanField(default=False, help_text="Hidden from the site after owner review. The row is kept.")
+    review_note = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -469,3 +474,95 @@ class YouTubeSource(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_source_type_display()})"
+
+
+def strip_unsupported_chars(text):
+    """The database connection cannot store characters outside the basic range, such as emoji."""
+    return ''.join(ch for ch in (text or '') if ord(ch) <= 0xFFFF)
+
+
+class Article(models.Model):
+    """An original article in the Insights section."""
+    DRAFT = 'draft'
+    PUBLISHED = 'published'
+    STATUS_CHOICES = [(DRAFT, 'Draft (not public)'), (PUBLISHED, 'Published')]
+
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=120, unique=True)
+    summary = models.CharField(max_length=300, help_text="One or two sentences, used in lists and search results.")
+    body = models.TextField(help_text="Markdown. Must not contain TODO-OWNER when published.")
+    author_name = models.CharField(max_length=120, blank=True, help_text="The real author. Required to publish.")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=DRAFT)
+    published_at = models.DateTimeField(null=True, blank=True)
+    last_reviewed = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-published_at', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        return reverse('article-detail', kwargs={'slug': self.slug})
+
+    def clean(self):
+        """Stop unfinished drafts from being published by accident."""
+        if self.status != self.PUBLISHED:
+            return
+        errors = {}
+        if not self.author_name.strip():
+            errors['author_name'] = 'Add the real author before publishing.'
+        if 'TODO-OWNER' in self.body or '[DATA:' in self.body:
+            errors['body'] = 'Finish every TODO-OWNER and [DATA: ...] note before publishing.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.title = strip_unsupported_chars(self.title)
+        self.summary = strip_unsupported_chars(self.summary)
+        self.body = strip_unsupported_chars(self.body)
+        if self.status == self.PUBLISHED and not self.published_at:
+            self.published_at = timezone.now()
+        super().save(*args, **kwargs)
+
+
+class MonthlyCommentary(models.Model):
+    """The owner's "This month in brief" text on the Dashboard."""
+    month = models.DateField(unique=True, help_text="Any date in the month this refers to.")
+    body = models.TextField(help_text="3 to 4 paragraphs of Markdown.")
+    is_published = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-month']
+        verbose_name_plural = "Monthly commentary"
+
+    def __str__(self):
+        return self.month.strftime('%B %Y')
+
+    def save(self, *args, **kwargs):
+        self.body = strip_unsupported_chars(self.body)
+        super().save(*args, **kwargs)
+
+
+class ContactMessage(models.Model):
+    """A message sent through the contact form. Read these in the admin."""
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    subject = models.CharField(max_length=200, blank=True)
+    message = models.TextField()
+    is_handled = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name}: {self.subject or self.message[:40]}"
+
+    def save(self, *args, **kwargs):
+        for field in ('name', 'subject', 'message'):
+            setattr(self, field, strip_unsupported_chars(getattr(self, field)))
+        super().save(*args, **kwargs)

@@ -2,7 +2,8 @@ from django.contrib import admin
 from .models import (
     Country, ProductGroup, BasketItem, PriceObservation,
     CPIIndex, ExchangeRate, NewsArticle, ScrapeLog, ScrapeSource,
-    AdPlacement, PriceAuditLog, YouTubeVideo, YouTubeSource
+    AdPlacement, PriceAuditLog, YouTubeVideo, YouTubeSource,
+    Article, MonthlyCommentary, ContactMessage
 )
 
 
@@ -46,8 +47,8 @@ class CPIIndexAdmin(admin.ModelAdmin):
 
 @admin.register(ExchangeRate)
 class ExchangeRateAdmin(admin.ModelAdmin):
-    list_display = ['country', 'rate_date', 'base_currency', 'local_currency', 'rate']
-    list_filter = ['country', 'base_currency']
+    list_display = ['country', 'rate_date', 'base_currency', 'local_currency', 'rate', 'source', 'is_excluded']
+    list_filter = ['country', 'base_currency', 'source', 'is_excluded']
     date_hierarchy = 'rate_date'
 
 
@@ -166,3 +167,24 @@ class ScrapeSourceAdmin(admin.ModelAdmin):
     def make_inactive(self, request, queryset):
         queryset.update(is_active=False)
 
+
+@admin.register(Article)
+class ArticleAdmin(admin.ModelAdmin):
+    list_display = ['title', 'status', 'author_name', 'published_at', 'last_reviewed']
+    list_filter = ['status']
+    search_fields = ['title', 'body']
+    prepopulated_fields = {'slug': ('title',)}
+
+
+@admin.register(MonthlyCommentary)
+class MonthlyCommentaryAdmin(admin.ModelAdmin):
+    list_display = ['month', 'is_published', 'updated_at']
+    list_filter = ['is_published']
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ['created_at', 'name', 'email', 'subject', 'is_handled']
+    list_filter = ['is_handled']
+    search_fields = ['name', 'email', 'subject', 'message']
+    readonly_fields = ['name', 'email', 'subject', 'message', 'created_at']

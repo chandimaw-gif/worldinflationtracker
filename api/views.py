@@ -75,7 +75,7 @@ class ExchangeRateListView(generics.ListAPIView):
 
     def get_queryset(self):
         country_code = self.kwargs['code']
-        return ExchangeRate.objects.filter(country__code=country_code)
+        return ExchangeRate.objects.filter(country__code=country_code, is_excluded=False)
 
 
 class NewsArticleListView(generics.ListAPIView):
