@@ -224,6 +224,7 @@ SITE_URL = 'https://worldinflationtracker.com'
 SITE_CONTACT_EMAIL = env('SITE_CONTACT_EMAIL', default='')
 SITE_OWNER_NAME = env('SITE_OWNER_NAME', default='')
 SITE_OWNER_BIO = env('SITE_OWNER_BIO', default='')
+SITE_OWNER_URL = env('SITE_OWNER_URL', default='')
 
 # YouTube API
 YOUTUBE_API_KEY = env('YOUTUBE_API_KEY', default='')

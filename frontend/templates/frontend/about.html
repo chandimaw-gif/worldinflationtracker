@@ -9,10 +9,10 @@
 
     <p>World Inflation Tracker brings Sri Lanka's official inflation figures, logged consumer prices and exchange rates together in one place, with the source and date shown for each. It starts with Sri Lanka, and is built so that other countries can be added later.</p>
 
-    {# TODO-OWNER: set SITE_OWNER_NAME and SITE_OWNER_BIO in .env. This section stays hidden until then. Do not use an invented name. #}
+    {# Set in .env: SITE_OWNER_NAME, SITE_OWNER_URL, SITE_OWNER_BIO. Hidden if the name is empty. #}
     {% if site_owner_name %}
     <h2>Who runs this site</h2>
-    <p>World Inflation Tracker is run by <strong>{{ site_owner_name }}</strong>.</p>
+    <p>World Inflation Tracker is a side project of {% if site_owner_url %}<a href="{{ site_owner_url }}" target="_blank" rel="noopener author">{{ site_owner_name }}</a>{% else %}<strong>{{ site_owner_name }}</strong>{% endif %}.</p>
     {% if site_owner_bio %}<p>{{ site_owner_bio }}</p>{% endif %}
     {% endif %}
 
