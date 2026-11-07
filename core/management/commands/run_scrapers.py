@@ -24,6 +24,7 @@ from scrapers.sources.market_data import (
     SeylanBankRateScraper,
     CommercialBankRateScraper,
     SampathBankRateScraper,
+    USTreasuryYieldScraper,
 )
 
 
@@ -31,6 +32,7 @@ SCRAPER_MAP = {
     'cbsl': CBSLExchangeRateScraper,
     'cbsl_gold': CBSLGoldScraper,
     'cbsl_market': CBSLMarketRateScraper,
+    'us_treasury': USTreasuryYieldScraper,
     'ceypetco': CEYPETCOScraper,
     'ceb': CEBTariffScraper,
     'litro': LitroGasScraper,

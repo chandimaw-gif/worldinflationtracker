@@ -24,3 +24,6 @@
 
 # Curated news from Google Sheet (05:30 UTC = 11:00 AM SLT)
 30 5 * * * cd /home/master/applications/ctaaqxskeb/public_html && /usr/bin/python3 manage.py import_sheet_news >> /tmp/import_sheet_news.log 2>&1
+
+# US Treasury 10-year yield (07:00 UTC = 12:30 PM SLT)
+0 7 * * * cd /home/master/applications/ctaaqxskeb/public_html && /usr/bin/python3 manage.py fetch_market_data --source us_treasury >> /tmp/fetch_us_treasury.log 2>&1

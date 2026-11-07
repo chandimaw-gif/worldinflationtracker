@@ -1,12 +1,14 @@
 """
-Scrapers for Sri Lankan market data:
+Scrapers for market data:
 - CBSL indicative exchange rates
 - CBSL interest rates (AWPLR, TBill, SDFR, SLFR, OPR)
 - Commercial bank exchange rates
+- US Treasury yields
 """
 
 import re
 import requests
+import xml.etree.ElementTree as ET
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
@@ -21,24 +23,17 @@ class CBSLMarketRateScraper(BaseScraper):
 
     def scrape(self):
         country = Country.objects.get(code='LKA')
-        results = {'exchange_rate': 0, 'interest_rates': 0}
 
-        # 1. Daily indicative exchange rate
-        try:
-            self._scrape_exchange_rate(country)
-            results['exchange_rate'] = 1
-        except Exception as e:
-            self.errors.append(f"Exchange rate scrape failed: {e}")
-
-        # 2. Interest rates from CBSL rates page
+        # Interest rates from CBSL rates page
+        # (USD/LKR exchange rate is handled by fetch_daily_cbsl_exchange_rate)
         try:
             count = self._scrape_interest_rates(country)
-            results['interest_rates'] = count
         except Exception as e:
             self.errors.append(f"Interest rate scrape failed: {e}")
+            count = 0
 
-        self.items_scraped = sum(results.values())
-        self.status = 'success' if self.items_scraped > 0 else 'failed'
+        self.items_scraped = count
+        self.status = 'success' if count > 0 else 'failed'
 
     def _scrape_exchange_rate(self, country):
         """Fetch USD/LKR indicative rate from CBSL API page."""
@@ -359,3 +354,48 @@ class SampathBankRateScraper(BaseScraper):
 
         self.items_scraped = count
         self.status = 'success' if count > 0 else 'failed'
+
+
+class USTreasuryYieldScraper(BaseScraper):
+    """Fetch the latest US Treasury 10-year yield from treasury.gov XML feed."""
+    SOURCE_NAME = "US Treasury"
+    BASE_URL = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml"
+    TENOR = "BC_10YEAR"
+    RATE_TYPE = "us_treasury_10y"
+
+    def scrape(self):
+        country = Country.objects.get(code='LKA')
+        year = date.today().year
+        url = f"{self.BASE_URL}?data=daily_treasury_yield_curve&field_tdr_date_value={year}"
+
+        resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
+        resp.raise_for_status()
+
+        root = ET.fromstring(resp.content)
+        ns = {
+            'atom': 'http://www.w3.org/2005/Atom',
+            'd': 'http://schemas.microsoft.com/ado/2007/08/dataservices',
+        }
+        entries = root.findall('atom:entry', ns)
+        if not entries:
+            raise ValueError(f"No Treasury yield entries returned for {year}")
+
+        latest = max(entries, key=lambda e: e.find('.//d:NEW_DATE', ns).text)
+        date_text = latest.find('.//d:NEW_DATE', ns).text[:10]
+        rate_date = datetime.strptime(date_text, '%Y-%m-%d').date()
+
+        val_node = latest.find(f'.//d:{self.TENOR}', ns)
+        if val_node is None or val_node.text is None:
+            raise ValueError(f"{self.TENOR} value missing in latest Treasury entry")
+        rate = Decimal(val_node.text)
+
+        MarketRate.objects.update_or_create(
+            country=country,
+            rate_date=rate_date,
+            rate_type=self.RATE_TYPE,
+            currency='USD',
+            defaults={'rate': rate, 'source': self.SOURCE_NAME},
+        )
+
+        self.items_scraped = 1
+        self.status = 'success'

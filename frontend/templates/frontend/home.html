@@ -387,6 +387,9 @@ const mainChart = new Chart(ctx, {
                         return context.dataset.label + ': ' + val.toFixed(1) + (isYoY(metric) ? '%' : '');
                     }
                 }
+            },
+            electionLines: {
+                annotations: chartData.annotations || []
             }
         },
         scales: {

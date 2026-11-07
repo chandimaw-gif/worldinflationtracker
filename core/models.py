@@ -339,6 +339,7 @@ class MarketRate(models.Model):
         ('sdfr', 'Standing Deposit Facility Rate (SDFR)'),
         ('slfr', 'Standing Lending Facility Rate (SLFR)'),
         ('opr', 'Overnight Policy Rate (OPR)'),
+        ('us_treasury_10y', 'US 10-Year Treasury Yield'),
     ]
 
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='market_rates')

@@ -14,6 +14,7 @@ from scrapers.sources.market_data import (
     SeylanBankRateScraper,
     CommercialBankRateScraper,
     SampathBankRateScraper,
+    USTreasuryYieldScraper,
 )
 
 
@@ -22,6 +23,7 @@ SCRAPER_MAP = {
     'seylan': SeylanBankRateScraper,
     'commercial': CommercialBankRateScraper,
     'sampath': SampathBankRateScraper,
+    'us_treasury': USTreasuryYieldScraper,
 }
 
 

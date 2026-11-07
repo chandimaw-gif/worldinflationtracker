@@ -53,3 +53,39 @@
 - ScrapeSource scheduling fields added (day-of-week, day-of-month).
 - YouTubeSource model added with default sources seeded.
 - Admin can add/edit sources and trigger YouTube fetch from the UI.
+
+## Election Chart Markers — 2026-05-20
+
+- Added vertical dashed lines to the home-page CPI chart and the exchange-rate chart for the Sep 2024 (Presidential) and Nov 2024 (General) elections.
+- Custom Chart.js plugin `electionLines` registered in `base.html`; annotations injected from `frontend/views.py` for LKA.
+- Files changed: `frontend/views.py`, `frontend/templates/base.html`, `frontend/templates/frontend/home.html`, `frontend/templates/frontend/exchange_rates.html`.
+- Deployed to server and Gunicorn restarted on port 8000; both `/` and `/exchange-rates/` return HTTP 200 with markers present.
+
+## Updated Election / Crisis Chart Markers — 2026-05-20
+
+- Marker labels now render as slanted vertical text alongside each vertical line, alternating left/right of the line to avoid overlap.
+- Added two new Sri Lanka markers:
+  - **Mar 2020** — Start of Covid
+  - **Apr 2020** — Start of economic crisis
+- CPI chart axis now extends continuously back to Mar 2020 and fills missing months with null values.
+- Exchange-rate chart now includes the full available daily history back to Mar 2020 (with `maxTicksLimit: 12` on the x-axis).
+- Marker constants live in `frontend/views.py` as `LKA_CHART_ANNOTATIONS` and are reused by both charts.
+- Deployed and restarted Gunicorn on port 8000.
+
+## Exchange-Rate Chart Fix — 2026-05-20
+
+- Rebuilt the exchange-rate chart using actual records only (no daily null padding), with an `x` scale of type `linear` (days since 2020-01-01).
+- This restores the USD/LKR trend line and still shows the four vertical markers (Mar 2020, Apr 2020, Sep 2024, Nov 2024) using numeric `value` positions.
+- Updated the custom `electionLines` plugin to support both label-based markers (CPI chart) and numeric `value` markers (exchange chart).
+- x-axis ticks now format day numbers back to `Mon YYYY` in the browser.
+- Deployed and restarted Gunicorn on port 8000.
+
+## US Treasury Yield Scraper — 2026-05-20
+
+- Added `us_treasury_10y` to `MarketRate` choices and a `USTreasuryYieldScraper` in `scrapers/sources/market_data.py`.
+- The scraper reads the treasury.gov XML feed for the current year and saves the latest 10-year yield.
+- Registered the scraper in `fetch_market_data`, `run_scrapers`, and the exchange-rates view (`US 10Y Treasury Yield`).
+- Fixed `CBSLMarketRateScraper` so it no longer attempts to scrape USD/LKR (it was saving an incorrect value).
+- Removed an erroneous `ExchangeRate` record (9.30 LKR/USD) created by the old CBSL market scraper.
+- Scheduled the US Treasury scraper daily at 07:00 UTC in `crontab.txt` and on the server.
+- Live page now shows **US 10Y Treasury Yield: 4.55%** (as of 2026-07-07).

@@ -1,3 +1,4 @@
+import datetime
 import json
 from datetime import date, timedelta
 from decimal import Decimal
@@ -8,6 +9,15 @@ from dateutil.relativedelta import relativedelta
 
 from core.models import Country, PriceObservation, NewsArticle, ExchangeRate, CPIIndex, ProductGroup, BasketItem, YouTubeVideo
 from cpi_engine.calculations import compute_cpi, compute_inflation_rates
+
+
+# Vertical markers shown on Sri Lankan CPI and exchange-rate charts
+LKA_CHART_ANNOTATIONS = [
+    {'date': 'Mar 2020', 'label': 'Start of Covid', 'color': '#dc2626'},
+    {'date': 'Apr 2020', 'label': 'Start of economic crisis', 'color': '#ea580c'},
+    {'date': 'Sep 2024', 'label': 'Presidential Election', 'color': '#7c3aed'},
+    {'date': 'Nov 2024', 'label': 'General Election', 'color': '#7c3aed'},
+]
 
 
 class HomeView(TemplateView):
@@ -148,7 +158,26 @@ class HomeView(TemplateView):
 
         # Build unified month list spanning all available data
         # Include WIT-estimated months so recent months (before official CBSL release) appear
-        all_months = sorted(set(official_by_month.keys()) | set(core_by_month.keys()) | set(wit_by_month.keys()))
+        all_months = set(official_by_month.keys()) | set(core_by_month.keys()) | set(wit_by_month.keys())
+
+        # Ensure annotation months appear on the axis even if official data starts later
+        if country and country.code == 'LKA':
+            for ann in LKA_CHART_ANNOTATIONS:
+                ann_dt = datetime.datetime.strptime(ann['date'], '%b %Y').date()
+                all_months.add((ann_dt.year, ann_dt.month))
+
+        all_months = sorted(all_months)
+
+        # Fill in every month between the first and last so the axis is continuous
+        if all_months:
+            min_year, min_month = all_months[0]
+            max_year, max_month = all_months[-1]
+            all_months = []
+            cur = date(min_year, min_month, 1)
+            end = date(max_year, max_month, 1)
+            while cur <= end:
+                all_months.append((cur.year, cur.month))
+                cur += relativedelta(months=1)
 
         chart_data = {
             'labels': [],
@@ -178,6 +207,10 @@ class HomeView(TemplateView):
 
             wit = wit_by_month.get((yr, mo))
             chart_data['wit_ccpi'].append(float(wit.index_value) if wit else None)
+
+        # Vertical markers for Sri Lankan charts
+        if country and country.code == 'LKA':
+            chart_data['annotations'] = list(LKA_CHART_ANNOTATIONS)
 
         ctx['chart_data_json'] = json.dumps(chart_data)
         return ctx
@@ -223,23 +256,40 @@ class ExchangeRateView(TemplateView):
         country_code = self.kwargs.get('country', 'LKA')
         today = date.today()
 
-        # All exchange rates for historical chart (up to ~3 years)
+        # Recent rates for the table
         rates_qs = ExchangeRate.objects.filter(
             country__code=country_code
         ).order_by('-rate_date')[:730]
         context['rates'] = rates_qs
         context['latest_rate'] = rates_qs.first()
 
-        # Chart data (reversed for chronological order)
-        chart_labels = []
+        # All exchange rates for historical chart (actual records only)
+        all_rates_qs = ExchangeRate.objects.filter(
+            country__code=country_code
+        ).order_by('rate_date')
+        origin = date(2020, 1, 1)
         chart_data = []
-        for r in reversed(list(rates_qs)):
-            chart_labels.append(r.rate_date.strftime('%b %Y'))
-            chart_data.append(float(r.rate))
-        context['exchange_chart_json'] = json.dumps({
-            'labels': chart_labels,
+        for r in all_rates_qs:
+            chart_data.append({
+                'x': (r.rate_date - origin).days,
+                'y': float(r.rate),
+            })
+
+        x_max = (today - origin).days
+        if chart_data:
+            x_max = max(x_max, max(p['x'] for p in chart_data))
+
+        exchange_chart_data = {
             'data': chart_data,
-        })
+            'x_min': (date(2020, 3, 1) - origin).days,
+            'x_max': x_max,
+        }
+        if country_code == 'LKA':
+            exchange_chart_data['annotations'] = [
+                {**ann, 'value': (datetime.datetime.strptime(ann['date'], '%b %Y').date() - origin).days}
+                for ann in LKA_CHART_ANNOTATIONS
+            ]
+        context['exchange_chart_json'] = json.dumps(exchange_chart_data)
 
         # 90-day stats (high / low / YoY) — computed from actual 90-day window
         ninety_days_ago = today - timedelta(days=90)
@@ -397,6 +447,7 @@ class ExchangeRateView(TemplateView):
             ('sdfr', 'SDFR'),
             ('slfr', 'SLFR'),
             ('opr', 'OPR'),
+            ('us_treasury_10y', 'US 10Y Treasury Yield'),
         ]:
             latest = MarketRate.objects.filter(
                 country__code=country_code,

@@ -9,6 +9,59 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+    (function() {
+        const electionLinesPlugin = {
+            id: 'electionLines',
+            afterDraw(chart) {
+                const opts = chart.options.plugins && chart.options.plugins.electionLines;
+                if (!opts || !opts.annotations || !opts.annotations.length) return;
+                const ctx = chart.ctx;
+                const xAxis = chart.scales.x;
+                const yAxis = chart.scales.y;
+                if (!xAxis || !yAxis) return;
+                ctx.save();
+                opts.annotations.forEach(function(ann, i) {
+                    let x = null;
+                    if (ann.value !== null && ann.value !== undefined) {
+                        x = xAxis.getPixelForValue(ann.value);
+                    } else {
+                        const labels = chart.data.labels || [];
+                        const idx = labels.findIndex(function(l) { return l === ann.date; });
+                        if (idx === -1) return;
+                        x = xAxis.getPixelForValue(labels[idx]);
+                    }
+                    if (x === null || isNaN(x)) return;
+
+                    // dashed vertical line
+                    ctx.beginPath();
+                    ctx.moveTo(x, yAxis.top);
+                    ctx.lineTo(x, yAxis.bottom);
+                    ctx.strokeStyle = ann.color || 'rgba(100, 100, 100, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+
+                    // slanted vertical label alongside the line
+                    ctx.save();
+                    const centerY = (yAxis.top + yAxis.bottom) / 2;
+                    const side = ann.side || (i % 2 === 0 ? 'right' : 'left');
+                    const offset = side === 'right' ? 8 : -8;
+                    ctx.translate(x + offset, centerY);
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.fillStyle = ann.color || '#666';
+                    ctx.font = '11px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(ann.label || '', 0, 0);
+                    ctx.restore();
+                });
+                ctx.restore();
+            }
+        };
+        Chart.register(electionLinesPlugin);
+    })();
+    </script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2187016535602304" crossorigin="anonymous"></script>
     {% block extra_head %}{% endblock %}
 </head>

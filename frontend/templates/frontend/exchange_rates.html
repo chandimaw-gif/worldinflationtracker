@@ -143,7 +143,6 @@ const ctx = document.getElementById('exchange-chart').getContext('2d');
 new Chart(ctx, {
     type: 'line',
     data: {
-        labels: exchangeChartData.labels,
         datasets: [{
             label: 'USD/LKR',
             data: exchangeChartData.data,
@@ -164,11 +163,29 @@ new Chart(ctx, {
             legend: { display: false },
             tooltip: {
                 callbacks: {
+                    title: ctx => {
+                        const d = new Date(2020, 0, 1 + ctx[0].parsed.x);
+                        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                    },
                     label: ctx => `LKR ${ctx.parsed.y.toFixed(2)} per 1 USD`
                 }
+            },
+            electionLines: {
+                annotations: exchangeChartData.annotations || []
             }
         },
         scales: {
+            x: {
+                type: 'linear',
+                min: exchangeChartData.x_min,
+                max: exchangeChartData.x_max,
+                ticks: {
+                    callback: function(value) {
+                        const d = new Date(2020, 0, 1 + value);
+                        return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+                    }
+                }
+            },
             y: { title: { display: true, text: 'LKR per 1 USD' }, beginAtZero: false }
         }
     }
