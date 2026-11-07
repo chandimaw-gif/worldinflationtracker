@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% load wit_extras %}
+
+{% block title %}{{ article.title }} | World Inflation Tracker{% endblock %}
+{% block meta_description %}{{ article.summary }}{% endblock %}
+{% block extra_head %}{% if article.status != 'published' %}<meta name="robots" content="noindex">{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container content-page article-page">
+    {% if article.status != 'published' %}
+    <p class="draft-banner">Draft preview. Only signed-in staff can see this page.</p>
+    {% endif %}
+    <p class="insight-back"><a href="{% url 'insights' %}">← All insights</a></p>
+    <h1>{{ article.title }}</h1>
+    <p class="insight-meta">
+        {% if article.published_at %}{{ article.published_at|date:"j F Y" }}{% endif %}
+        {% if article.author_name %} · By {{ article.author_name }}{% endif %}
+        {% if article.last_reviewed %} · Last reviewed {{ article.last_reviewed|date:"j F Y" }}{% endif %}
+    </p>
+    <div class="article-body">{{ article.body|markdownify }}</div>
+    <div class="disclaimer-box">
+        <p>This article is for information only and is not financial advice. See our <a href="{% url 'methodology' %}">Methodology</a> for data sources, or <a href="{% url 'contact' %}">report an error</a>.</p>
+    </div>
+</div>
+{% endblock %}

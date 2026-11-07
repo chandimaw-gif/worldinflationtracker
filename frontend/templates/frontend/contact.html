@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact | World Inflation Tracker{% endblock %}
+{% block meta_description %}Contact World Inflation Tracker with a question, a data correction or a privacy request.{% endblock %}
+
+{% block content %}
+<div class="container content-page">
+    <h1>Contact</h1>
+    <p class="subtitle">Questions, data corrections and privacy requests are all welcome.</p>
+
+    {# TODO-OWNER: set SITE_CONTACT_EMAIL in .env to show your public email address here. #}
+    {% if contact_email %}
+    <p>Email: <a href="mailto:{{ contact_email }}">{{ contact_email }}</a></p>
+    {% endif %}
+
+    {% if sent %}
+    <div class="notice-success" role="status">
+        <p><strong>Thank you.</strong> Your message has been received.</p>
+    </div>
+    {% else %}
+    <form method="post" class="contact-form" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        <label for="{{ form.name.id_for_label }}">Your name</label>
+        {{ form.name }}{{ form.name.errors }}
+        <label for="{{ form.email.id_for_label }}">Your email</label>
+        {{ form.email }}{{ form.email.errors }}
+        <label for="{{ form.subject.id_for_label }}">Subject (optional)</label>
+        {{ form.subject }}{{ form.subject.errors }}
+        <label for="{{ form.message.id_for_label }}">Message</label>
+        {{ form.message }}{{ form.message.errors }}
+        <div class="hp-field" aria-hidden="true">
+            <label for="{{ form.website.id_for_label }}">Leave this empty</label>
+            {{ form.website }}
+        </div>
+        <button type="submit" class="btn">Send message</button>
+        <p class="form-note">We use your details only to reply. See our <a href="{% url 'privacy-policy' %}">Privacy Policy</a>.</p>
+    </form>
+    {% endif %}
+
+    <h2>Reporting a data error</h2>
+    <p>Please tell us the page, the date, the figure you think is wrong and, if you can, a link to the correct source.</p>
+</div>
+{% endblock %}

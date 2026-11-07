@@ -1,11 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}Detailed Analysis | World Inflation Tracker{% endblock %}
+{% block title %}Compare Sri Lanka Item Prices | World Inflation Tracker{% endblock %}
+{% block meta_description %}Compare Sri Lankan consumer item prices over the past 12 months using the prices in our log.{% endblock %}
 
 {% block content %}
 <div class="container content-page">
     <h1>Detailed Analysis</h1>
     <p class="subtitle">Compare item prices over time. Tick items to add them to the chart.</p>
+    <p class="data-source">Source: our <a href="{% url 'price-log' %}">Price Log</a>. Each month shows the latest price recorded by then.{% if last_updated %} Latest price collected: {{ last_updated|date:"j F Y" }}.{% endif %}</p>
 
     <div class="comparison-form">
         <form method="get" id="analysis-form">
@@ -45,18 +47,6 @@
         <canvas id="analysis-chart"></canvas>
     </div>
 
-    {% if adsense.enabled %}
-    <div class="ad-container ad-in-content">
-        <div class="ad-label">Advertisement</div>
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-{{ adsense.publisher_id }}"
-             data-ad-slot="{{ adsense.slots.sidebar }}"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-    </div>
-    {% endif %}
 
     <h2 style="margin-top:2rem;font-size:1.125rem;">Product Groups</h2>
     <table>

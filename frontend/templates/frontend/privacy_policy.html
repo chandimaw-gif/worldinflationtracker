@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Privacy Policy | World Inflation Tracker{% endblock %}
+{% block meta_description %}How World Inflation Tracker handles server logs, cookies, contact messages and advertising, and how to opt out of personalised ads.{% endblock %}
+
+{% block content %}
+{# TODO-OWNER: review wording before publishing. This was drafted without legal advice. #}
+{# TODO-OWNER: if you serve visitors in the EEA, UK or Switzerland, Google requires a certified consent tool for personalised ads. #}
+<div class="container content-page">
+    <h1>Privacy Policy</h1>
+    <p class="subtitle">Last updated: 7 November 2026</p>
+
+    <p>World Inflation Tracker publishes inflation, price and exchange-rate data for Sri Lanka. You can read the site without creating an account. This page explains what information is collected when you visit, and how it is used.</p>
+
+    <h2>Information we collect</h2>
+    <ul>
+        <li><strong>Server logs.</strong> Our web server records technical details of each request, such as IP address, browser type, the page requested and the time. We use these to keep the site running and secure.</li>
+        <li><strong>Contact messages.</strong> If you use the <a href="{% url 'contact' %}">contact form</a>, we store your name, email address and message so that we can reply.</li>
+        <li><strong>Analytics.</strong> We do not currently run a separate visitor analytics service. If this changes, we will update this page.</li>
+    </ul>
+
+    <h2>Cookies</h2>
+    <p>Cookies are small files stored by your browser. This site uses a security cookie on the contact form to protect against forged submissions, and Google may set advertising cookies as described below.</p>
+
+    <h2>Advertising and Google</h2>
+    <p>This site may show advertising from third-party vendors, including Google.</p>
+    <ul>
+        <li>Third-party vendors, including Google, use cookies to serve ads based on your prior visits to this website or other websites.</li>
+        <li>Google's use of advertising cookies enables it and its partners to serve ads to you based on your visits to this site and/or other sites on the internet.</li>
+        <li>You can read how Google uses information from sites that use its services in <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">Google's advertising technology policy</a>.</li>
+    </ul>
+
+    <h2>How to opt out of personalised advertising</h2>
+    <ul>
+        <li>Turn off personalised ads from Google in <a href="https://myadcenter.google.com/" target="_blank" rel="noopener">My Ad Center</a>.</li>
+        <li>Opt out of personalised ads from some other vendors at <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener">aboutads.info</a>.</li>
+        <li>You can also block or delete cookies in your browser settings.</li>
+    </ul>
+
+    <h2>Other services used by our pages</h2>
+    <p>Our pages load fonts from Google Fonts and a chart library from jsDelivr, and may show thumbnails from YouTube. Links to news stories and videos take you to other websites, which have their own privacy policies. These services can receive your IP address when your browser requests their files.</p>
+
+    <h2>Your questions and requests</h2>
+    <p>To ask about your information, or to ask us to delete a message you sent, please use the <a href="{% url 'contact' %}">contact page</a>.</p>
+
+    <h2>Changes to this policy</h2>
+    <p>If we change this policy, we will update the date at the top of this page.</p>
+</div>
+{% endblock %}

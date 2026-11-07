@@ -1,14 +1,25 @@
 {% extends 'base.html' %}
 
 {% block title %}Methodology | World Inflation Tracker{% endblock %}
+{% block meta_description %}Where each figure on World Inflation Tracker comes from, how often it updates, and how our price index is designed.{% endblock %}
 
 {% block content %}
 <div class="container content-page">
     <h1>Methodology</h1>
+
+    <section class="methodology-section">
+        <h2>Which figures are official?</h2>
+        <p>The headline and core inflation figures on the Dashboard are <strong>official</strong>: they are copied from the Central Bank of Sri Lanka's monthly CCPI releases, which use Department of Census and Statistics data. We do not calculate them. The chart starts in December 2022, because the Central Bank's earlier tables use a different base year (2013=100).</p>
+    </section>
+
+    <section class="methodology-section">
+        <h2>Our own price index: not yet published</h2>
+        <p>We are building an independent index from the prices in our <a href="{% url 'price-log' %}">Price Log</a>, using the method described below. It is not published yet, because we do not yet have enough consistent price history across enough items for it to be reliable. We will publish it once it has at least 12 months of regularly collected prices, and will state any limits it has at that time.</p>
+    </section>
     
     <section class="methodology-section">
-        <h2>1. Inflation Methodology — Laspeyres Fixed-Basket CPI</h2>
-        <p>We calculate the CPI using the <strong>modified Laspeyres index</strong>, consistent with the methodology used by Sri Lanka's Department of Census and Statistics (CCPI base 2021=100) and the ILO/IMF Consumer Price Index Manual (2020).</p>
+        <h2>1. Planned Method for Our Index — Laspeyres Fixed-Basket CPI</h2>
+        <p>Our index is designed to use the <strong>modified Laspeyres index</strong>, consistent with the methodology used by Sri Lanka's Department of Census and Statistics (CCPI base 2021=100) and the ILO/IMF Consumer Price Index Manual (2020).</p>
         
         <div class="formula-box">
             <h3>CPI Formula</h3>
@@ -39,26 +50,29 @@
 
     <section class="methodology-section">
         <h2>2. Elementary Index Compilation</h2>
-        <p>Following DCS methodology, elementary indices use the <strong>geometric mean (Jevons formula)</strong>:</p>
+        <p>Following DCS methodology, elementary indices are designed to use the <strong>geometric mean (Jevons formula)</strong>:</p>
         <p class="formula">P<sub>Jevons</sub> = (Π P<sub>i</sub>)<sup>(1/n)</sup></p>
-        <p>Higher-level indices use the <strong>Laspeyres formula</strong> with expenditure weights from HIES 2019.</p>
+        <p>Higher-level indices are designed to use the <strong>Laspeyres formula</strong> with expenditure weights from HIES 2019.</p>
     </section>
 
     <section class="methodology-section">
-        <h2>3. Data Sources</h2>
+        <h2>3. Data Sources and Update Frequency</h2>
         <ul>
-            <li><strong>Retail prices:</strong> Keells Super, Spar2U, Singer Sri Lanka, Buyabans, Dialog, SLT</li>
-            <li><strong>Fuel prices:</strong> CEYPETCO official website</li>
-            <li><strong>Exchange rates:</strong> Central Bank of Sri Lanka</li>
-            <li><strong>News:</strong> RSS feeds from EconomyNext, Daily FT, Daily Mirror, CBSL, and others</li>
+            <li><strong>Official CCPI:</strong> Central Bank of Sri Lanka monthly press releases (Department of Census and Statistics data). Added after each release.</li>
+            <li><strong>Fuel prices:</strong> CEYPETCO website, checked daily.</li>
+            <li><strong>Retail prices:</strong> Spar 2U listings, checked daily, plus manually entered prices. Keells is planned but is not yet collected.</li>
+            <li><strong>USD/LKR:</strong> CBSL TT selling rate, checked three times a day, from June 2026. Earlier history comes from x-rates.com and open.er-api.com, and each row shows its source.</li>
+            <li><strong>Bank exchange rates:</strong> rates published by individual banks, collected daily. A row is hidden if its selling rate is below its buying rate.</li>
+            <li><strong>US 10-year yield:</strong> US Treasury, daily.</li>
+            <li><strong>News:</strong> daily list of headlines, linked to the original publishers.</li>
         </ul>
     </section>
 
     <section class="methodology-section">
         <h2>4. Important Disclaimers</h2>
         <div class="disclaimer-box">
-            <p><strong>Disclaimer:</strong> World Inflation Tracker is an independent research tool. The inflation rates and price indices published here are calculated independently using publicly available price data and internationally standard methodologies. They are <strong>NOT official government statistics</strong>. For official inflation figures, please refer to the <a href="http://www.statistics.gov.lk" target="_blank">Department of Census and Statistics</a> and the <a href="https://www.cbsl.gov.lk" target="_blank">Central Bank of Sri Lanka</a>.</p>
-            <p><strong>Data Attribution:</strong> Product prices are sourced from publicly accessible e-commerce websites. News content is sourced via RSS feeds and attributed to original publishers. Exchange rate data is sourced from the Central Bank of Sri Lanka.</p>
+            <p><strong>Disclaimer:</strong> World Inflation Tracker is an independent research tool. Apart from figures labelled "Official", anything published here is <strong>NOT an official government statistic</strong>. For official inflation figures, please refer to the <a href="http://www.statistics.gov.lk" target="_blank">Department of Census and Statistics</a> and the <a href="https://www.cbsl.gov.lk" target="_blank">Central Bank of Sri Lanka</a>.</p>
+            <p><strong>Data Attribution:</strong> Product prices are sourced from publicly accessible e-commerce websites. News headlines link to their original publishers. Each exchange rate shows its source.</p>
         </div>
     </section>
 </div>

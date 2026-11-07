@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Terms of Use | World Inflation Tracker{% endblock %}
+{% block meta_description %}The terms for using World Inflation Tracker, including our disclaimer that its data is not official statistics or financial advice.{% endblock %}
+
+{% block content %}
+{# TODO-OWNER: review wording before publishing. This was drafted without legal advice. #}
+<div class="container content-page">
+    <h1>Terms of Use</h1>
+    <p class="subtitle">Last updated: 7 November 2026</p>
+
+    <p>By using World Inflation Tracker you agree to these terms.</p>
+
+    <h2>Information only</h2>
+    <p>This site is for educational, research and analytical purposes. Nothing here is financial, investment, legal or tax advice. Exchange rates are indicative, so please confirm rates with your bank before making a transaction.</p>
+
+    <h2>Not official statistics</h2>
+    <div class="disclaimer-box">
+        <p>This is an independent research tool. Any index calculated by this site is <strong>not an official government statistic</strong>. For official figures, refer to the <a href="http://www.statistics.gov.lk" target="_blank" rel="noopener">Department of Census and Statistics</a> and the <a href="https://www.cbsl.gov.lk" target="_blank" rel="noopener">Central Bank of Sri Lanka</a>.</p>
+    </div>
+
+    <h2>Accuracy</h2>
+    <p>We try to keep the data correct and up to date, but we cannot guarantee that it is complete, accurate or current, and it may contain errors. You use it at your own risk. If you spot a mistake, please <a href="{% url 'contact' %}">tell us</a>.</p>
+
+    <h2>Other websites</h2>
+    <p>We link to news publishers, video channels and data sources that we do not control, and we are not responsible for their content.</p>
+
+    <h2>Using our content</h2>
+    <p>You are welcome to quote our data and articles with a credit and a link back to this site. Figures that come from other organisations remain theirs.</p>
+
+    <h2>Changes</h2>
+    <p>We may update these terms from time to time. The date above shows the latest version.</p>
+</div>
+{% endblock %}

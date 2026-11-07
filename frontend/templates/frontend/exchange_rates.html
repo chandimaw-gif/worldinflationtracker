@@ -1,16 +1,18 @@
 {% extends 'base.html' %}
 
-{% block title %}Exchange Rates & Market Data | World Inflation Tracker{% endblock %}
+{% block title %}USD/LKR Exchange Rate & Bank Rates | World Inflation Tracker{% endblock %}
+{% block meta_description %}USD/LKR rate history, TT rates published by Sri Lankan banks, and key interest rates, with sources and dates.{% endblock %}
 
 {% block content %}
 <div class="container content-page">
     <h1>Exchange Rates & Market Data</h1>
-    <p class="subtitle">CBSL indicative rates, bank TT rates, and Sri Lankan interest rates.</p>
+    <p class="subtitle">USD/LKR history, bank TT rates and key interest rates.</p>
+    <p class="data-source">{% if latest_rate %}USD/LKR source: {{ latest_rate.source|default:"CBSL" }}. Updated {{ latest_rate.rate_date|date:"j F Y" }}.{% endif %}</p>
 
     <!-- Key stats -->
     <div class="stats-grid mini">
         <div class="stat-card">
-            <h4>USD/LKR (Indicative)</h4>
+            <h4>USD/LKR (TT selling)</h4>
             <div class="stat-value">
                 {% if latest_rate %}{{ latest_rate.rate|floatformat:2 }}{% else %}—{% endif %}
             </div>
@@ -29,7 +31,7 @@
             </div>
         </div>
         <div class="stat-card">
-            <h4>YoY Change</h4>
+            <h4>12-Month Change</h4>
             <div class="stat-value">
                 {% if yoy_change != None %}
                     <span class="{% if yoy_change > 0 %}positive{% elif yoy_change < 0 %}negative{% else %}neutral{% endif %}">
@@ -37,17 +39,23 @@
                     </span>
                 {% else %}—{% endif %}
             </div>
+            {% if yoy_compared_to %}
+            <div class="stat-period">vs {{ yoy_compared_to.rate_date|date:"j M Y" }}, same source</div>
+            {% elif yoy_available_from %}
+            <div class="stat-period">Available from {{ yoy_available_from|date:"F Y" }}, when this source has a full year of data</div>
+            {% endif %}
         </div>
     </div>
 
     <!-- Interest rates -->
     {% if market_rates %}
-    <h2 style="margin-top:2rem;font-size:1.1rem;">📊 Key Interest Rates</h2>
+    <h2 style="margin-top:2rem;font-size:1.1rem;">📊 Key Rates</h2>
     <div class="stats-grid mini" style="margin-top:0.75rem;">
-        {% for label, value in market_rates.items %}
+        {% for label, rate in market_rates.items %}
         <div class="stat-card">
             <h4>{{ label }}</h4>
-            <div class="stat-value" style="font-size:1.25rem;">{{ value|floatformat:2 }}%</div>
+            <div class="stat-value" style="font-size:1.25rem;">{{ rate.value|floatformat:2 }}%</div>
+            <div class="stat-period">{{ rate.date|date:"j M Y" }}</div>
         </div>
         {% endfor %}
     </div>
@@ -59,14 +67,15 @@
         <div class="chart-container large">
             <canvas id="exchange-chart"></canvas>
         </div>
+        <p class="chart-source">Monthly mid-market rates from x-rates.com until May 2026, then daily CBSL TT selling rates from June 2026. A TT selling rate is normally higher than a mid-market rate, so part of the step at that point comes from the change of source.</p>
     </div>
 
     <!-- Bank TT rates table -->
     {% if bank_rates %}
     <h2 style="margin-top:2.5rem;font-size:1.1rem;">🏦 TT Exchange Rates</h2>
     <p style="font-size:0.8125rem;color:var(--color-text-muted);margin-bottom:0.75rem;">
-        Telegraphic Transfer (TT) rates — LKR per 1 unit of foreign currency.
-        CBSL Average TT = average of licensed commercial bank quotes at 9:30 AM.
+        Telegraphic Transfer (TT) rates — LKR per 1 unit of foreign currency, on the date under each bank's name.
+        A dash means no reliable figure is available for that rate.
     </p>
     <div style="overflow-x:auto;">
     <table class="bank-rates-table">
@@ -74,7 +83,7 @@
             <tr>
                 <th>Currency</th>
                 {% for bank in bank_rates.0.banks %}
-                <th colspan="2" style="text-align:center;">{{ bank.name }}</th>
+                <th colspan="2" style="text-align:center;">{{ bank.name }}<br><span class="th-date">{{ bank.date|date:"j M Y" }}</span></th>
                 {% endfor %}
             </tr>
             <tr>
@@ -87,7 +96,7 @@
         </thead>
         <tbody>
             {% for row in bank_rates %}
-            {% if row.banks.0.buying or row.banks.0.selling %}
+            {% if row.has_data %}
             <tr>
                 <td><strong>{{ row.currency }}</strong></td>
                 {% for bank in row.banks %}
@@ -105,17 +114,17 @@
     </table>
     </div>
     <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.5rem;">
-        Source: Central Bank of Sri Lanka. Rates are indicative — confirm with your bank before transacting.
+        Source: rates published by each bank, collected daily. Rates are indicative — confirm with your bank before transacting.
     </p>
     {% else %}
     <div class="widget" style="text-align:center;margin-top:2rem;">
-        <p class="no-data">Bank TT rate data not yet available. Run <code>python3 manage.py fetch_cbsl_tt_rates</code> on the server to fetch today's rates.</p>
+        <p class="no-data">Bank TT rates are not available at the moment.</p>
     </div>
     {% endif %}
 
     <!-- Historical rates table -->
-    <div class="table-wrapper" style="margin-top:2rem;">
-        <h2 style="font-size:1.1rem;">📅 Recent USD/LKR Rates</h2>
+    <div class="table-wrapper" id="history" style="margin-top:2rem;">
+        <h2 style="font-size:1.1rem;">📅 {% if show_all_rates %}USD/LKR Rate History{% else %}USD/LKR: Latest 30 Rates{% endif %}</h2>
         <table>
             <thead>
                 <tr><th>Date</th><th>USD/LKR</th><th>Source</th></tr>
@@ -125,13 +134,18 @@
                 <tr>
                     <td>{{ r.rate_date }}</td>
                     <td class="numeric">{{ r.rate|floatformat:2 }}</td>
-                    <td style="font-size:0.8125rem;color:var(--color-text-muted);">{{ r.source|default:"CBSL" }}</td>
+                    <td style="font-size:0.8125rem;color:var(--color-text-muted);">{{ r.source|default:"Not recorded" }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="3" class="no-data">No exchange rate data yet.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% if show_all_rates %}
+        <p style="margin-top:0.75rem;"><a class="btn secondary" href="{% url 'exchange-rates' %}#history">Show latest 30 only</a></p>
+        {% elif total_rates > 30 %}
+        <p style="margin-top:0.75rem;"><a class="btn secondary" href="?rows=all#history">Show all {{ total_rates }} rates</a></p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

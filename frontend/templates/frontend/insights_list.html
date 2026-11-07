@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Insights | World Inflation Tracker{% endblock %}
+{% block meta_description %}Original articles explaining Sri Lanka's inflation, exchange rates and interest rates in plain English.{% endblock %}
+
+{% block content %}
+<div class="container content-page">
+    <h1>Insights</h1>
+    <p class="subtitle">Plain-English explanations of Sri Lanka's inflation, exchange rates and interest rates.</p>
+
+    {% for article in articles %}
+    <article class="insight-row">
+        <h2><a href="{{ article.get_absolute_url }}">{{ article.title }}</a></h2>
+        <p class="insight-meta">{{ article.published_at|date:"j F Y" }} · {{ article.author_name }}</p>
+        <p>{{ article.summary }}</p>
+    </article>
+    {% empty %}
+    <p class="no-data">No articles have been published yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

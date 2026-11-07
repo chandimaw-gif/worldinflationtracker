@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}World Inflation Tracker{% endblock %}</title>
-    <meta name="description" content="Independent inflation tracking across the world using real price data">
+    <meta name="description" content="{% block meta_description %}Sri Lanka inflation, consumer prices and exchange rates, with the source and date shown for each figure.{% endblock %}">
+    {% block canonical %}<link rel="canonical" href="{{ site_url }}{{ request.path }}">{% endblock %}
     {% load static %}
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
@@ -62,7 +63,7 @@
         Chart.register(electionLinesPlugin);
     })();
     </script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2187016535602304" crossorigin="anonymous"></script>
+    {% include 'frontend/_ad_code.html' %}
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -77,6 +78,7 @@
                 <a href="{% url 'analysis' %}">Analysis</a>
                 <a href="{% url 'price-log' %}">Price Log</a>
                 <a href="{% url 'exchange-rates' %}">Exchange Rates</a>
+                {% if has_insights %}<a href="{% url 'insights' %}">Insights</a>{% endif %}
                 <a href="{% url 'methodology' %}">Methodology</a>
                 <a href="{% url 'about' %}">About</a>
             </nav>
@@ -84,62 +86,22 @@
         </div>
     </header>
 
-    {# Google AdSense — Header Banner (Leaderboard) #}
-    {% if adsense.enabled %}
-    <div class="ad-container ad-header">
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-{{ adsense.publisher_id }}"
-             data-ad-slot="{{ adsense.slots.sidebar }}"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-    </div>
-    {% elif ads.header_banner %}
-    <div class="ad-container ad-header" data-slot="header_banner">
-        {% if ads.header_banner.ad_type == 'manual' %}
-            <a href="{{ ads.header_banner.manual_link_url }}" target="_blank" rel="noopener sponsored">
-                <img src="{{ ads.header_banner.manual_image_url }}" alt="{{ ads.header_banner.manual_alt_text }}" loading="lazy">
-            </a>
-        {% elif ads.header_banner.ad_type == 'custom' %}
-            {{ ads.header_banner.manual_html|safe }}
-        {% endif %}
-    </div>
-    {% endif %}
-
     <main class="site-main">
         {% block content %}{% endblock %}
     </main>
 
-    {# Google AdSense — Footer Banner #}
-    {% if adsense.enabled %}
-    <div class="ad-container ad-footer">
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-{{ adsense.publisher_id }}"
-             data-ad-slot="{{ adsense.slots.news_footer }}"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-    </div>
-    {% elif ads.footer_banner %}
-    <div class="ad-container ad-footer" data-slot="footer_banner">
-        {% if ads.footer_banner.ad_type == 'manual' %}
-            <a href="{{ ads.footer_banner.manual_link_url }}" target="_blank" rel="noopener sponsored">
-                <img src="{{ ads.footer_banner.manual_image_url }}" alt="{{ ads.footer_banner.manual_alt_text }}" loading="lazy">
-            </a>
-        {% elif ads.footer_banner.ad_type == 'custom' %}
-            {{ ads.footer_banner.manual_html|safe }}
-        {% endif %}
-    </div>
-    {% endif %}
-
     <footer class="site-footer">
         <div class="container" style="text-align:center;">
             <p>© {% now "Y" %} World Inflation Tracker. Independent research tool.</p>
+            <nav class="footer-links" aria-label="Site information">
+                <a href="{% url 'about' %}">About</a>
+                <a href="{% url 'contact' %}">Contact</a>
+                <a href="{% url 'privacy-policy' %}">Privacy Policy</a>
+                <a href="{% url 'terms' %}">Terms of Use</a>
+            </nav>
             <p class="disclaimer" style="text-align:center;max-width:800px;margin-left:auto;margin-right:auto;">
-                <strong>Disclaimer:</strong> This is an independent research tool. The inflation rates published here are NOT official government statistics.
-                For official figures, refer to the Department of Census and Statistics and the Central Bank of Sri Lanka.
+                <strong>Disclaimer:</strong> This is an independent research tool, not a government website. Figures labelled "Official" are reproduced from the Central Bank of Sri Lanka and the Department of Census and Statistics. Anything else here is NOT an official statistic.
+                For official figures, refer to those organisations directly.
             </p>
         </div>
     </footer>
