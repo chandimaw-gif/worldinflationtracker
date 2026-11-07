@@ -170,7 +170,7 @@ class ScrapeSourceAdmin(admin.ModelAdmin):
 
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
-    list_display = ['title', 'status', 'author_name', 'published_at', 'last_reviewed']
+    list_display = ['title', 'status', 'publish_on', 'author_name', 'published_at', 'last_reviewed']
     list_filter = ['status']
     search_fields = ['title', 'body']
     prepopulated_fields = {'slug': ('title',)}

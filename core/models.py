@@ -494,6 +494,10 @@ class Article(models.Model):
     author_name = models.CharField(max_length=120, blank=True, help_text="The real author. Required to publish.")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=DRAFT)
     published_at = models.DateTimeField(null=True, blank=True)
+    publish_on = models.DateField(
+        null=True, blank=True,
+        help_text="Optional. A finished draft goes live at about 8:00 am Sri Lanka time on this date. Clear it to cancel.",
+    )
     last_reviewed = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
