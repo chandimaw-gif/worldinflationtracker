@@ -54,7 +54,7 @@ Always run Git pulls, migrations, and management commands from this directory.
 ## Admin UI — 2026-07-06
 
 - Admin URL: `https://worldinflationtracker.com/admin/`
-- Login: `chandimaw@gmail.com` / `WIT123!@#`
+- Login: ask the owner. Never write credentials in this public repository.
 - Custom admin dashboard shows quick links for:
   - Scrape Sources
   - YouTube Sources

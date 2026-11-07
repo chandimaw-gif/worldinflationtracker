@@ -49,7 +49,7 @@
 ## Admin UI Added — 2026-07-06
 
 - Django admin customized with project branding and quick-links dashboard.
-- Superuser `chandimaw@gmail.com` password `WIT123!@#` confirmed working.
+- Superuser login confirmed working. Never write credentials in this public repository.
 - ScrapeSource scheduling fields added (day-of-week, day-of-month).
 - YouTubeSource model added with default sources seeded.
 - Admin can add/edit sources and trigger YouTube fetch from the UI.
@@ -89,3 +89,10 @@
 - Removed an erroneous `ExchangeRate` record (9.30 LKR/USD) created by the old CBSL market scraper.
 - Scheduled the US Treasury scraper daily at 07:00 UTC in `crontab.txt` and on the server.
 - Live page now shows **US 10Y Treasury Yield: 4.55%** (as of 2026-07-07).
+
+## AdSense Fixes - 2026-11-07
+
+- Bank sheet columns can start with the bank name, shifting values one label down. `import_google_sheet_rates` repairs this; the sheet's update job should be fixed at source.
+- Official CCPI comes from `data/official_ccpi_cbsl.json` via `load_official_ccpi`. CBSL returns 403 to this server, so new monthly PDFs are passed in with `--pdf`. `backfill_official_ccpi` is retired because its typed-in data was wrong.
+- Suspect USD/LKR rows: `flag_suspect_rates` lists them and hides owner-approved rows without deleting them.
+- Ad units are removed. The only ad code is `frontend/templates/frontend/_ad_code.html`.
