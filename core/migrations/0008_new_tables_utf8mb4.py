@@ -14,10 +14,13 @@ def convert(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
+    # MySQL cannot run ALTER TABLE inside a transaction.
+    atomic = False
+
     dependencies = [
         ('core', '0007_new_content_models'),
     ]
 
     operations = [
-        migrations.RunPython(convert, migrations.RunPython.noop),
+        migrations.RunPython(convert, migrations.RunPython.noop, atomic=False),
     ]
