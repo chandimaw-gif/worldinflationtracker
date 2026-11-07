@@ -9,6 +9,12 @@ Sheet format (Exchange Rates tab):
   Col B: Currency label (e.g. "USD Buy", "USD Sell", "GBP Buy" etc.)
   Col C onwards: Date columns (e.g. "31-May-26", "01-Jun-26" ...)
 
+Known problem in the sheet (since June 2026): the job that fills it writes some
+date columns starting with the bank's NAME in the "USD Buy" row. Every value in
+that column then sits one label too low, and the final value is lost. Those
+columns are detected here and moved back up. Seylan also lists sell before buy in
+those columns. Columns written correctly are read as they are.
+
 Usage:
     python3 manage.py import_google_sheet_rates
     python3 manage.py import_google_sheet_rates --url "https://..."
@@ -43,6 +49,42 @@ RATE_BOUNDS = {
     'JPY': (1.5, 3.5),
     'INR': (2.5, 5.5),
 }
+
+
+# Banks whose shifted columns list the selling rate before the buying rate.
+SELL_FIRST_IN_SHIFTED_COLUMNS = {'Seylan Bank'}
+
+# A bank's selling rate should not be this far above its buying rate.
+MAX_SELL_OVER_BUY = Decimal('1.15')
+
+
+def _is_shifted(first_cell):
+    """True when a column's first value is a bank name instead of a number."""
+    return bool(re.search(r'[A-Za-z]{3,}', first_cell or '')) and first_cell.strip().upper() != 'N/A'
+
+
+def _column_values(bank, labels, cells):
+    """Match one date column's cells to labels, repairing a shifted column."""
+    cells = [c.strip() for c in cells]
+    if not cells or not _is_shifted(cells[0]):
+        return dict(zip(labels, cells))
+    values = dict(zip(labels, cells[1:]))
+    if bank in SELL_FIRST_IN_SHIFTED_COLUMNS:
+        for currency in {label.split()[0] for label in labels}:
+            buy, sell = f'{currency} Buy', f'{currency} Sell'
+            values[buy], values[sell] = values.get(sell, ''), values.get(buy, '')
+    return values
+
+
+def _pair_problem(buying, selling):
+    """Return why a buy/sell pair is impossible, or None if it is acceptable."""
+    if buying is None or selling is None:
+        return None
+    if selling < buying:
+        return 'sell is below buy'
+    if selling > buying * MAX_SELL_OVER_BUY:
+        return 'sell is too far above buy'
+    return None
 
 
 def _parse_decimal(text):
@@ -141,6 +183,7 @@ class Command(BaseCommand):
         # Parse data rows
         records = []
         warnings = []
+        blocks = {}  # bank -> [(label, row)]
         current_bank = None
 
         for row in rows[1:]:
@@ -155,41 +198,47 @@ class Command(BaseCommand):
                 continue
 
             # Currency label in col B: "USD Buy", "USD Sell", "GBP Buy" etc.
-            label = row[1].strip() if len(row) > 1 else ''
-            if not label:
-                continue
-
-            # Parse currency and direction from label
             match = re.match(r'^(USD|GBP|EUR|AUD|CAD|SGD|JPY|INR)\s+(Buy|Sell)$',
-                             label, re.IGNORECASE)
+                             row[1].strip(), re.IGNORECASE)
             if not match:
                 continue
+            label = f'{match.group(1).upper()} {match.group(2).title()}'
+            blocks.setdefault(current_bank, []).append((label, row))
 
-            currency = match.group(1).upper()
-            direction = match.group(2).lower()  # 'buy' or 'sell'
-
-            # Read values for each date column
+        shifted_columns = 0
+        for bank, block in blocks.items():
+            labels = [label for label, _ in block]
             for col_idx, rate_date in date_cols.items():
-                if col_idx >= len(row):
-                    continue
-                value = _parse_decimal(row[col_idx])
-                if value is None:
-                    continue
+                cells = [row[col_idx] if col_idx < len(row) else '' for _, row in block]
+                if cells and _is_shifted(cells[0].strip()):
+                    shifted_columns += 1
 
-                if not _is_valid_rate(currency, value):
-                    warnings.append(
-                        f"  ⚠️  {current_bank} {currency} {direction} "
-                        f"on {rate_date}: {value} — out of expected range, skipped"
-                    )
-                    continue
+                for label, raw in _column_values(bank, labels, cells).items():
+                    currency, direction = label.split()
+                    direction = direction.lower()  # 'buy' or 'sell'
+                    value = _parse_decimal(raw)
+                    if value is None:
+                        continue
 
-                records.append({
-                    'bank': current_bank,
-                    'date': rate_date,
-                    'currency': currency,
-                    'direction': direction,
-                    'value': value,
-                })
+                    if not _is_valid_rate(currency, value):
+                        warnings.append(
+                            f"  ⚠️  {bank} {currency} {direction} "
+                            f"on {rate_date}: {value} — out of expected range, skipped"
+                        )
+                        continue
+
+                    records.append({
+                        'bank': bank,
+                        'date': rate_date,
+                        'currency': currency,
+                        'direction': direction,
+                        'value': value,
+                    })
+
+        if shifted_columns:
+            self.stdout.write(self.style.WARNING(
+                f"Repaired {shifted_columns} shifted columns. The sheet's update job should be fixed too."
+            ))
 
         # Print warnings
         if warnings:
@@ -224,7 +273,16 @@ class Command(BaseCommand):
                 grouped[key]['selling'] = r['value']
 
         saved = 0
+        rejected = 0
         for (bank, rate_date, currency), rates in grouped.items():
+            problem = _pair_problem(rates['buying'], rates['selling'])
+            if problem:
+                rejected += 1
+                logger.warning(
+                    f"Rejected {bank} {currency} on {rate_date}: "
+                    f"buy {rates['buying']}, sell {rates['selling']} ({problem})"
+                )
+                continue
             try:
                 BankExchangeRate.objects.update_or_create(
                     country=country,
@@ -245,5 +303,6 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(
             f"Saved {saved} bank rate records across "
-            f"{len(set(k[0] for k in grouped))} banks."
+            f"{len(set(k[0] for k in grouped))} banks. "
+            f"Rejected {rejected} impossible buy/sell pairs."
         ))

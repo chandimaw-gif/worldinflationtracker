@@ -22,6 +22,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 from django.core.management.base import BaseCommand
+from django.db import close_old_connections
 from django.utils import timezone
 
 from core.models import Country, PriceObservation, PriceAuditLog, ScrapeSource, ScrapeLog
@@ -400,13 +401,20 @@ class Command(BaseCommand):
                 success_count += 1
 
             except Exception as e:
-                error_msg = str(e)
+                # The database is latin1: a browser error containing box-drawing
+                # characters used to crash the save, ending the run for every later source.
+                error_msg = str(e).encode('ascii', 'ignore').decode('ascii')
                 self.stdout.write(self.style.ERROR(f"    FAILED: {error_msg}"))
                 source.last_status = 'failed'
                 source.last_error = error_msg[:500]
                 source.last_scraped_at = timezone.now()
                 if not options['dry_run']:
-                    source.save(update_fields=['last_status', 'last_error', 'last_scraped_at'])
+                    try:
+                        # A slow request can outlast the database connection.
+                        close_old_connections()
+                        source.save(update_fields=['last_status', 'last_error', 'last_scraped_at'])
+                    except Exception as save_error:
+                        self.stdout.write(self.style.ERROR(f"    Could not record failure: {save_error}"))
                 fail_count += 1
                 run_errors.append(f"{source.item.name} ({source.source_name}): {error_msg}")
 
